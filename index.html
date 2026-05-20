@@ -1046,7 +1046,7 @@ boot();
   async function typeIn(spans) {
     for (const { el } of spans) {
       el.style.opacity = '1';
-      await delay(el.textContent === ' ' ? 25 : 48);
+      await delay(el.textContent.trim() === '' ? 30 : 130);
     }
   }
 
@@ -1088,11 +1088,11 @@ boot();
     // Phase 1 — typewriter left to right
     const spans = buildSpans();
     fullEl.style.opacity = '1';
-    await delay(200);
+    await delay(400);
     await typeIn(spans);
 
     // Hold the full title
-    await delay(900);
+    await delay(1100);
 
     // Phase 2 — collapse non-N/E/O letters leftward
     await collapseToNEO(spans);
