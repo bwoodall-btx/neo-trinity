@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TRINITY">
+  <meta name="theme-color" content="#010A01">
+  <title>TRINITY</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    :root {
+      --green:       #00FF41;
+      --green-dim:   #00CC33;
+      --green-mid:   #008822;
+      --green-dark:  #001A00;
+      --green-glow:  rgba(0, 255, 65, 0.35);
+      --bg:          #010A01;
+      --surface:     rgba(0, 18, 0, 0.88);
+      --text:        #C0FFC0;
+      --text-dim:    #3A6A3A;
+      --amber:       rgba(255, 165, 0, 0.75);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+    }
+
+    /* ── Matrix Rain ── */
+    #rain {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.10;
+      pointer-events: none;
+    }
+
+    /* ── App Shell ── */
+    #app {
+      position: relative;
+      z-index: 10;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(0, 255, 65, 0.12);
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--text-dim);
+    }
+
+    .logo strong {
+      color: var(--green);
+      font-weight: normal;
+    }
+
+    .pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+      animation: dot-pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    #cfg-btn {
+      background: none;
+      border: 1px solid rgba(0, 255, 65, 0.15);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 2px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #cfg-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── Banner ── */
+    #banner {
+      background: rgba(40, 18, 0, 0.9);
+      border-bottom: 1px solid rgba(255, 140, 0, 0.3);
+      color: var(--amber);
+      font-size: 9px;
+      letter-spacing: 2px;
+      padding: 7px 18px;
+      text-align: center;
+      flex-shrink: 0;
+      display: none;
+    }
+    #banner.show { display: block; }
+
+    /* ── Conversation Feed ── */
+    #feed {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #feed::-webkit-scrollbar { display: none; }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-width: 88%;
+      animation: msg-in 0.25s ease;
+    }
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.trinity { align-self: flex-start; }
+    .msg.user    { align-self: flex-end; }
+
+    .msg-label {
+      font-size: 8px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+    }
+    .msg.user .msg-label { text-align: right; }
+
+    .msg-body {
+      font-size: 12px;
+      line-height: 1.65;
+      padding: 10px 13px;
+    }
+
+    .msg.trinity .msg-body {
+      background: rgba(0, 35, 0, 0.75);
+      border-left: 2px solid var(--green-dim);
+      color: var(--text);
+    }
+
+    .msg.user .msg-body {
+      background: rgba(0, 18, 0, 0.55);
+      border-right: 2px solid var(--text-dim);
+      color: var(--text-dim);
+      text-align: right;
+    }
+
+    /* ── Orb ── */
+    #orb-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0 10px;
+      flex-shrink: 0;
+    }
+
+    #orb-wrap {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin-bottom: 9px;
+    }
+
+    #orb {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: 1.5px solid var(--green);
+      background: radial-gradient(circle at 38% 35%, rgba(0,255,65,0.18), rgba(0,60,10,0.05));
+      box-shadow: 0 0 22px var(--green-glow), 0 0 50px rgba(0,255,65,0.08), inset 0 0 18px rgba(0,255,65,0.04);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s;
+      animation: orb-idle 3.2s ease-in-out infinite;
+    }
+    #orb:active { transform: scale(0.93); }
+
+    @keyframes orb-idle {
+      0%, 100% { box-shadow: 0 0 22px var(--green-glow), 0 0 50px rgba(0,255,65,0.08), inset 0 0 18px rgba(0,255,65,0.04); }
+      50%       { box-shadow: 0 0 34px rgba(0,255,65,0.5), 0 0 70px rgba(0,255,65,0.14), inset 0 0 28px rgba(0,255,65,0.07); }
+    }
+
+    #orb-icon {
+      font-size: 30px;
+      color: var(--green);
+      opacity: 0.85;
+      transition: all 0.2s;
+    }
+
+    /* Waveform bars */
+    #wave {
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .wbar {
+      width: 3px;
+      border-radius: 2px;
+      background: var(--green);
+      animation: wv 0.7s ease-in-out infinite;
+    }
+    .wbar:nth-child(1){ height:10px; animation-delay:0.0s; }
+    .wbar:nth-child(2){ height:18px; animation-delay:0.1s; }
+    .wbar:nth-child(3){ height:26px; animation-delay:0.2s; }
+    .wbar:nth-child(4){ height:30px; animation-delay:0.3s; }
+    .wbar:nth-child(5){ height:24px; animation-delay:0.4s; }
+    .wbar:nth-child(6){ height:16px; animation-delay:0.5s; }
+    .wbar:nth-child(7){ height:10px; animation-delay:0.4s; }
+
+    @keyframes wv {
+      0%,100% { transform: scaleY(0.4); opacity: 0.45; }
+      50%      { transform: scaleY(1.4); opacity: 1; }
+    }
+
+    /* Spinner ring */
+    #spin {
+      position: absolute;
+      inset: -9px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      border-top-color: var(--green);
+      border-right-color: rgba(0,255,65,0.25);
+      animation: spin 0.9s linear infinite;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* State modifiers on body */
+    .s-listening  #orb { animation: orb-listen 0.55s ease-in-out infinite; border-color: #00FF88; }
+    .s-listening  #wave { opacity: 1; }
+    .s-processing #spin { opacity: 1; }
+    .s-speaking   #orb { animation: orb-speak 0.28s ease-in-out infinite; }
+    .s-speaking   #wave { opacity: 1; }
+
+    @keyframes orb-listen {
+      0%,100% { box-shadow: 0 0 22px rgba(0,255,136,0.45), 0 0 50px rgba(0,255,136,0.15); }
+      50%      { box-shadow: 0 0 38px rgba(0,255,136,0.7), 0 0 70px rgba(0,255,136,0.25); }
+    }
+    @keyframes orb-speak {
+      0%,100% { box-shadow: 0 0 28px rgba(0,255,65,0.6), 0 0 55px rgba(0,255,65,0.2); }
+      50%      { box-shadow: 0 0 44px rgba(0,255,65,0.85), 0 0 85px rgba(0,255,65,0.3); }
+    }
+
+    #orb-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    /* ── Quick Actions ── */
+    #actions {
+      display: flex;
+      gap: 7px;
+      padding: 0 14px 14px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+    #actions::-webkit-scrollbar { display: none; }
+
+    .act {
+      flex-shrink: 0;
+      padding: 7px 13px;
+      background: rgba(0, 25, 0, 0.85);
+      border: 1px solid rgba(0,255,65,0.15);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .act:hover, .act:active {
+      background: rgba(0, 55, 0, 0.85);
+      border-color: var(--green-dim);
+      color: var(--green);
+    }
+
+    /* ── Settings Modal ── */
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(1, 8, 1, 0.97);
+      flex-direction: column;
+      padding: max(env(safe-area-inset-top), 24px) 22px max(env(safe-area-inset-bottom), 20px);
+      overflow-y: auto;
+    }
+    #modal.open { display: flex; }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    .modal-title {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--green);
+    }
+
+    .modal-close {
+      background: none;
+      border: 1px solid rgba(0,255,65,0.2);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 2px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-close:hover { border-color: var(--green); color: var(--green); }
+
+    .section-head {
+      font-size: 8px;
+      letter-spacing: 4px;
+      color: var(--green-mid);
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0,255,65,0.08);
+      margin-bottom: 18px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 8px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 7px;
+    }
+
+    .field input {
+      width: 100%;
+      background: rgba(0,18,0,0.85);
+      border: 1px solid rgba(0,255,65,0.18);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 11px 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    .field input:focus { border-color: var(--green-dim); }
+
+    .field-hint {
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-top: 5px;
+      line-height: 1.55;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: rgba(0, 55, 0, 0.85);
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 3px;
+      padding: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: rgba(0, 80, 0, 0.85); }
+
+    .btn-secondary {
+      background: none;
+      border: 1px solid rgba(0,255,65,0.18);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 2px;
+      padding: 13px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-secondary:hover { border-color: var(--green-dim); color: var(--green-dim); }
+
+    .divider {
+      margin: 28px 0 22px;
+      border: none;
+      border-top: 1px solid rgba(0,255,65,0.08);
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom) + 24px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 40, 0, 0.96);
+      border: 1px solid var(--green-dim);
+      color: var(--text);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      padding: 10px 20px;
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+  </style>
+</head>
+<body>
+
+<!-- Matrix Rain -->
+<canvas id="rain"></canvas>
+
+<!-- App -->
+<div id="app">
+
+  <header>
+    <div class="header-left">
+      <span class="logo">NEO / <strong>TRINITY</strong></span>
+      <div class="pulse-dot"></div>
+    </div>
+    <button id="cfg-btn" onclick="openModal()">⚙ CONFIG</button>
+  </header>
+
+  <div id="banner">⚠ API KEYS REQUIRED — TAP CONFIG TO ACTIVATE</div>
+
+  <div id="feed">
+    <div class="msg trinity" id="init-msg">
+      <div class="msg-label">TRINITY</div>
+      <div class="msg-body" id="init-text">Initializing…</div>
+    </div>
+  </div>
+
+  <div id="orb-zone">
+    <div id="orb-wrap">
+      <div id="orb" onclick="orbTap()">
+        <span id="orb-icon">◉</span>
+      </div>
+      <div id="wave">
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div>
+      </div>
+      <div id="spin"></div>
+    </div>
+    <div id="orb-label">TAP TO SPEAK</div>
+  </div>
+
+  <div id="actions">
+    <button class="act" onclick="quickAction('briefing',   'Give me my morning briefing.')">◈ BRIEFING</button>
+    <button class="act" onclick="quickAction('calendar',   'What does my day look like?')">⊡ CALENDAR</button>
+    <button class="act" onclick="quickAction('email',      'I need to draft an email.')">✉ DRAFT EMAIL</button>
+    <button class="act" onclick="quickAction('neo_status', 'What is the current NEO system status?')">⊞ NEO STATUS</button>
+    <button class="act" onclick="startListening()">⏱ REMIND ME</button>
+  </div>
+
+</div>
+
+<!-- Settings Modal -->
+<div id="modal">
+
+  <div class="modal-head">
+    <div class="modal-title">TRINITY — CONFIGURATION</div>
+    <button class="modal-close" onclick="closeModal()">✕ CLOSE</button>
+  </div>
+
+  <div class="section-head">VOICE ENGINE — ELEVENLABS</div>
+
+  <div class="field">
+    <label>API KEY</label>
+    <input type="password" id="f-key" placeholder="Your ElevenLabs API key" autocomplete="off">
+    <div class="field-hint">elevenlabs.io → Profile icon (top right) → API Keys → Create API Key</div>
+  </div>
+
+  <div class="field">
+    <label>VOICE ID</label>
+    <input type="text" id="f-vid" placeholder="e.g. EXAVITQu4vr4xnSDxMaL" autocomplete="off">
+    <div class="field-hint">
+      Browse at elevenlabs.io/voice-library. Click a voice → copy the ID from its detail panel. Paste it here and tap TEST VOICE to hear it as Trinity before saving.
+    </div>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn-secondary" onclick="testVoice()">▶ TEST VOICE</button>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-head">NEO BACKEND — MAKE.COM</div>
+
+  <div class="field">
+    <label>WEBHOOK URL</label>
+    <input type="url" id="f-hook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
+    <div class="field-hint">From your Trinity Request Handler scenario in Make.com → Webhooks → Copy address.</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="saveConfig()">SAVE CONFIGURATION</button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────
+   MATRIX RAIN
+───────────────────────────────────────── */
+(function () {
+  const cv = document.getElementById('rain');
+  const cx = cv.getContext('2d');
+  const CH = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEFGHIJKLMNO';
+  let cols, drops;
+
+  function resize() {
+    cv.width  = window.innerWidth;
+    cv.height = window.innerHeight;
+    cols  = Math.floor(cv.width / 18);
+    drops = Array(cols).fill(1);
+  }
+
+  function tick() {
+    cx.fillStyle = 'rgba(1,10,1,0.055)';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    cx.fillStyle = '#00FF41';
+    cx.font = '13px Share Tech Mono, monospace';
+    drops.forEach((y, i) => {
+      cx.fillText(CH[Math.random() * CH.length | 0], i * 18, y * 18);
+      if (y * 18 > cv.height && Math.random() > 0.974) drops[i] = 0;
+      drops[i]++;
+    });
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(tick, 65);
+})();
+
+/* ─────────────────────────────────────────
+   CONFIG  (localStorage)
+───────────────────────────────────────── */
+const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', lastDay: 'T_LAST_BRIEF_DAY' };
+
+function cfg()     { return { key: localStorage.getItem(SK.key)||'', vid: localStorage.getItem(SK.vid)||'', hook: localStorage.getItem(SK.hook)||'' }; }
+function isReady() { const c=cfg(); return !!(c.key && c.vid && c.hook); }
+
+/* ─────────────────────────────────────────
+   MODAL
+───────────────────────────────────────── */
+function openModal() {
+  const c = cfg();
+  document.getElementById('f-key').value  = c.key;
+  document.getElementById('f-vid').value  = c.vid;
+  document.getElementById('f-hook').value = c.hook;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function saveConfig() {
+  localStorage.setItem(SK.key,  document.getElementById('f-key').value.trim());
+  localStorage.setItem(SK.vid,  document.getElementById('f-vid').value.trim());
+  localStorage.setItem(SK.hook, document.getElementById('f-hook').value.trim());
+  toast('CONFIGURATION SAVED');
+  closeModal();
+  boot();
+}
+
+/* ─────────────────────────────────────────
+   TOAST
+───────────────────────────────────────── */
+let _tt;
+function toast(msg, ms=2600) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+/* ─────────────────────────────────────────
+   STATE MACHINE  — classes applied to <body>
+───────────────────────────────────────── */
+let state = 'idle';
+
+function setState(s) {
+  state = s;
+  document.body.className = 's-' + s;
+  const lbl  = document.getElementById('orb-label');
+  const icon = document.getElementById('orb-icon');
+  switch (s) {
+    case 'idle':       lbl.textContent='TAP TO SPEAK';    icon.textContent='◉'; break;
+    case 'listening':  lbl.textContent='LISTENING…';      icon.textContent='●'; break;
+    case 'processing': lbl.textContent='PROCESSING…';     icon.textContent='◉'; break;
+    case 'speaking':   lbl.textContent='TRINITY SPEAKING'; icon.textContent='◎'; break;
+  }
+}
+
+/* ─────────────────────────────────────────
+   FEED
+───────────────────────────────────────── */
+function addMsg(role, text) {
+  const feed = document.getElementById('feed');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.innerHTML = `<div class="msg-label">${role==='trinity'?'TRINITY':'YOU'}</div><div class="msg-body">${text}</div>`;
+  feed.appendChild(d);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+/* ─────────────────────────────────────────
+   BACKEND  (Make.com webhook)
+───────────────────────────────────────── */
+async function callBackend(action, input) {
+  const c = cfg();
+  if (!c.hook) throw new Error('no-webhook');
+  const res = await fetch(c.hook, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, input: input||'', timestamp: new Date().toISOString(), timezone: 'America/Chicago' }),
+  });
+  if (!res.ok) throw new Error('HTTP '+res.status);
+  const ct = res.headers.get('content-type')||'';
+  return ct.includes('json') ? res.json() : res.text().then(t => ({ response: t }));
+}
+
+/* ─────────────────────────────────────────
+   ELEVENLABS TTS
+───────────────────────────────────────── */
+let _audio = null;
+
+async function speak(text) {
+  const c = cfg();
+  if (!c.key || !c.vid) return;
+  setState('speaking');
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${c.vid}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': c.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.50, similarity_boost: 0.80, style: 0.30, use_speaker_boost: true },
+      }),
+    });
+    if (!res.ok) throw new Error('eleven');
+    const url = URL.createObjectURL(await res.blob());
+    _audio = new Audio(url);
+    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); };
+    _audio.onerror = () => setState('idle');
+    await _audio.play();
+  } catch(e) {
+    console.error('TTS', e);
+    setState('idle');
+    toast('VOICE ENGINE ERROR — CHECK API KEY');
+  }
+}
+
+async function testVoice() {
+  const key = document.getElementById('f-key').value.trim();
+  const vid = document.getElementById('f-vid').value.trim();
+  if (!key||!vid) { toast('ENTER API KEY AND VOICE ID FIRST'); return; }
+  toast('TESTING VOICE…', 4500);
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Trinity online. Executive assistant for Project NEO. Ready to assist.', model_id: 'eleven_turbo_v2_5', voice_settings: { stability:0.5, similarity_boost:0.8, style:0.3 } }),
+    });
+    if (!res.ok) { toast('TEST FAILED — CHECK KEY AND VOICE ID'); return; }
+    new Audio(URL.createObjectURL(await res.blob())).play();
+    toast('');
+  } catch { toast('TEST FAILED — NETWORK ERROR'); }
+}
+
+/* ─────────────────────────────────────────
+   SPEECH RECOGNITION
+───────────────────────────────────────── */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let _rec = null;
+
+function startListening() {
+  if (!isReady()) { openModal(); return; }
+  if (state==='speaking'||state==='processing') return;
+  if (!SR) { toast('SPEECH NOT AVAILABLE IN THIS BROWSER'); return; }
+  _rec = new SR();
+  _rec.lang='en-US'; _rec.interimResults=false; _rec.maxAlternatives=1;
+  _rec.onstart  = () => setState('listening');
+  _rec.onerror  = e => { setState('idle'); if(e.error==='not-allowed') toast('MICROPHONE PERMISSION REQUIRED'); };
+  _rec.onend    = () => { if(state==='listening') setState('idle'); };
+  _rec.onresult = async e => {
+    const tx = e.results[0][0].transcript;
+    addMsg('user', tx);
+    setState('processing');
+    await processRequest('general', tx);
+  };
+  _rec.start();
+}
+
+function stopListening() { if(_rec){_rec.stop();_rec=null;} }
+
+/* ─────────────────────────────────────────
+   ORB
+───────────────────────────────────────── */
+function orbTap() {
+  if (!isReady())           { openModal(); return; }
+  if (state==='idle')       startListening();
+  else if (state==='listening') stopListening();
+  else if (state==='speaking'&&_audio) { _audio.pause(); _audio=null; setState('idle'); }
+}
+
+/* ─────────────────────────────────────────
+   PROCESS REQUEST
+───────────────────────────────────────── */
+async function processRequest(action, input) {
+  try {
+    const data  = await callBackend(action, input);
+    const reply = data.response || data.text || 'Request received.';
+    addMsg('trinity', reply);
+    await speak(reply);
+  } catch(e) {
+    console.error('request', e);
+    addMsg('trinity', 'I ran into a connectivity issue. Check your configuration and try again.');
+    setState('idle');
+  }
+}
+
+/* ─────────────────────────────────────────
+   QUICK ACTIONS
+───────────────────────────────────────── */
+async function quickAction(action, input) {
+  if (!isReady()) { openModal(); return; }
+  if (state!=='idle') return;
+  addMsg('user', input);
+  setState('processing');
+  await processRequest(action, input);
+}
+
+/* ─────────────────────────────────────────
+   DAILY BRIEFING AUTO-TRIGGER
+───────────────────────────────────────── */
+function briefingDue() {
+  const h = new Date().getHours();
+  return h>=7 && h<11 && localStorage.getItem(SK.lastDay) !== new Date().toDateString();
+}
+
+async function runBriefing() {
+  localStorage.setItem(SK.lastDay, new Date().toDateString());
+  addMsg('user', 'Morning briefing');
+  setState('processing');
+  await processRequest('briefing', 'Give me my morning briefing.');
+}
+
+/* ─────────────────────────────────────────
+   BOOT
+───────────────────────────────────────── */
+function greeting() {
+  const h = new Date().getHours();
+  return h<12 ? 'Good morning' : h<17 ? 'Good afternoon' : 'Good evening';
+}
+
+function boot() {
+  const ready = isReady();
+  document.getElementById('banner').classList.toggle('show', !ready);
+  document.getElementById('init-text').textContent = ready
+    ? `${greeting()}, Ben.${briefingDue()?' Your morning briefing is loading…':' I\'m online and standing by.'}`
+    : `${greeting()}, Ben. Trinity is standing by. Tap CONFIG to enter your API keys and activate voice.`;
+  if (ready && briefingDue()) setTimeout(runBriefing, 1200);
+}
+
+boot();
+</script>
+</body>
+</html>
