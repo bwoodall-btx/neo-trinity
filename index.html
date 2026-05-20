@@ -1080,7 +1080,7 @@ boot();
 
     // ── Voice fires immediately after tap (audio now unlocked) ──
     if (hasVoice()) {
-      const welcome = "Welcome to the Novel Enterprise Operator — NEO. I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
+      const welcome = "Welcome to the Novel Enterprise Operator — Neo. I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
       addMsg('trinity', welcome);
       speak(welcome);
     }
@@ -1100,15 +1100,9 @@ boot();
     // Hold N  E  O for 2 seconds
     await delay(2000);
 
-    // Phase 3 — swap to large NEO (clean fade, no scale)
+    // Phase 3 — TRINITY appears directly (large NEO removed)
     fullEl.style.opacity = '0';
-    await delay(250);
-    neoEl.classList.add('show');
-    await delay(1600);
-
-    // Phase 4 — NEO fades, TRINITY appears
-    neoEl.classList.remove('show');
-    await delay(500);
+    await delay(300);
     trinityEl.classList.add('show');
     subEl.classList.add('show');
     await delay(1700);
