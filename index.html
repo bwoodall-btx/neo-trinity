@@ -1046,7 +1046,7 @@ boot();
   async function typeIn(spans) {
     for (const { el } of spans) {
       el.style.opacity = '1';
-      await delay(el.textContent.trim() === '' ? 30 : 130);
+      await delay(el.textContent.trim() === '' ? 30 : 100);
     }
   }
 
