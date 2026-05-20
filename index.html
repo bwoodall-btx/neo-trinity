@@ -937,7 +937,6 @@ function stopListening() { if(_rec){_rec.stop();_rec=null;} }
    ORB
 ───────────────────────────────────────── */
 function orbTap() {
-  toast('ORB ▸ ' + state);
   if (!hasVoice())          { openModal(); return; }
   if (state==='idle')       startListening();
   else if (state==='listening') stopListening();
