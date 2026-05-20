@@ -453,6 +453,112 @@
       border-top: 1px solid rgba(0,255,65,0.08);
     }
 
+    /* ── Splash Screen ── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      background: #010A01;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 1s ease;
+    }
+    #splash.out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Scan line sweeping down */
+    #splash-scan {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: rgba(0, 255, 65, 0.5);
+      box-shadow: 0 0 10px rgba(0,255,65,0.6);
+      animation: scan-sweep 2.2s linear infinite;
+      z-index: 5;
+      top: 0;
+    }
+    @keyframes scan-sweep {
+      0%   { top: -2px; opacity: 1; }
+      95%  { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    #splash-stage {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      width: 100%;
+      padding: 0 28px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #splash-full {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(11px, 2.6vw, 17px);
+      letter-spacing: 5px;
+      color: #00FF41;
+      text-shadow: 0 0 10px rgba(0,255,65,0.8), 0 0 25px rgba(0,255,65,0.3);
+      position: absolute;
+      width: calc(100% - 56px);
+      line-height: 1.8;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #splash-neo {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(80px, 20vw, 150px);
+      letter-spacing: 18px;
+      color: #00FF41;
+      text-shadow:
+        0 0 20px rgba(0,255,65,1),
+        0 0 50px rgba(0,255,65,0.7),
+        0 0 100px rgba(0,255,65,0.4),
+        0 0 180px rgba(0,255,65,0.2);
+      position: absolute;
+      opacity: 0;
+      transform: scale(0.3);
+      transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    #splash-neo.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    #splash-trinity-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(26px, 7vw, 52px);
+      letter-spacing: 12px;
+      color: #00FF41;
+      text-shadow: 0 0 18px rgba(0,255,65,0.9), 0 0 40px rgba(0,255,65,0.4);
+      position: absolute;
+      opacity: 0;
+      transition: opacity 0.7s ease;
+    }
+    #splash-trinity-label.show {
+      opacity: 1;
+    }
+
+    #splash-sub {
+      position: absolute;
+      bottom: 28%;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 4px;
+      color: rgba(0,255,65,0.4);
+      opacity: 0;
+      transition: opacity 0.5s;
+      z-index: 10;
+    }
+    #splash-sub.show { opacity: 1; }
+
     /* ── Toast ── */
     #toast {
       position: fixed;
@@ -479,6 +585,17 @@
 
 <!-- Matrix Rain -->
 <canvas id="rain"></canvas>
+
+<!-- Splash Screen -->
+<div id="splash">
+  <div id="splash-scan"></div>
+  <div id="splash-stage">
+    <div id="splash-full"></div>
+    <div id="splash-neo">NEO</div>
+    <div id="splash-trinity-label">TRINITY</div>
+  </div>
+  <div id="splash-sub">EXECUTIVE ASSISTANT — PROJECT NEO</div>
+</div>
 
 <!-- App -->
 <div id="app">
@@ -841,23 +958,77 @@ function boot() {
 boot();
 
 /* ─────────────────────────────────────────
-   ORB TOUCH — attached via JS for iOS Safari reliability
-   preventDefault on touchstart blocks the ghost click that fires after touchend
+   ORB — pointerdown is most reliable across iOS Safari PWA + desktop
 ───────────────────────────────────────── */
 (function () {
   const orb = document.getElementById('orb');
+  let didFire = false;
 
-  orb.addEventListener('touchstart', function (e) {
+  orb.addEventListener('pointerdown', function (e) {
     e.preventDefault();
-  }, { passive: false });
-
-  orb.addEventListener('touchend', function (e) {
-    e.preventDefault();
+    if (didFire) return;
+    didFire = true;
     orbTap();
-  }, { passive: false });
+    setTimeout(() => { didFire = false; }, 400);
+  });
+})();
 
-  // Desktop mouse fallback
-  orb.addEventListener('click', orbTap);
+/* ─────────────────────────────────────────
+   SPLASH SEQUENCE
+───────────────────────────────────────── */
+(function () {
+  const splash       = document.getElementById('splash');
+  const fullEl       = document.getElementById('splash-full');
+  const neoEl        = document.getElementById('splash-neo');
+  const trinityEl    = document.getElementById('splash-trinity-label');
+  const subEl        = document.getElementById('splash-sub');
+  const title        = 'NOVEL\nENTERPRISE\nOPERATOR';
+  const displayLines = title.split('\n');
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function run() {
+    // Phase 1 — type out full title line by line
+    fullEl.style.opacity = '1';
+    fullEl.innerHTML = '';
+
+    for (const line of displayLines) {
+      const lineEl = document.createElement('div');
+      lineEl.style.minHeight = '1.4em';
+      fullEl.appendChild(lineEl);
+      for (const ch of line) {
+        lineEl.textContent += ch;
+        await delay(ch === ' ' ? 30 : 55);
+      }
+      await delay(80);
+    }
+
+    // Hold full title
+    await delay(900);
+
+    // Phase 2 — collapse title, reveal NEO
+    fullEl.style.opacity = '0';
+    await delay(350);
+    neoEl.classList.add('show');
+    await delay(1400);
+
+    // Phase 3 — fade NEO, reveal TRINITY + sub
+    neoEl.classList.remove('show');
+    await delay(500);
+    trinityEl.classList.add('show');
+    subEl.classList.add('show');
+    await delay(1600);
+
+    // Phase 4 — fade out splash, reveal app
+    trinityEl.classList.remove('show');
+    subEl.classList.remove('show');
+    await delay(600);
+    splash.classList.add('out');
+    await delay(1000);
+    splash.style.display = 'none';
+  }
+
+  run();
 })();
 </script>
 </body>
