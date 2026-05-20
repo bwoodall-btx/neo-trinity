@@ -1,10 +1,12 @@
 // Trinity Service Worker — NEO EA v1
-const CACHE = 'trinity-v1';
-const SHELL = ['/', '/index.html', '/manifest.json'];
+// Network-first for HTML so updates deploy immediately.
+// Cache-first only for static assets (fonts, icons).
+
+const CACHE = 'trinity-v2';
+const NETWORK_FIRST = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
-  self.skipWaiting();
+  self.skipWaiting(); // activate immediately on every deploy
 });
 
 self.addEventListener('activate', e => {
@@ -17,13 +19,32 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API calls; cache-first for shell assets
-  if (e.request.url.includes('api.elevenlabs.io') ||
-      e.request.url.includes('make.com') ||
-      e.request.url.includes('googleapis.com')) {
+  const url = new URL(e.request.url);
+
+  // Always skip cache for API calls
+  if (url.hostname.includes('elevenlabs') ||
+      url.hostname.includes('make.com') ||
+      url.hostname.includes('googleapis')) {
     e.respondWith(fetch(e.request));
     return;
   }
+
+  // Network-first for the app shell — always gets latest on deploy
+  const isShell = NETWORK_FIRST.some(p => url.pathname === p || url.pathname.endsWith('index.html'));
+  if (isShell) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request)) // offline fallback
+    );
+    return;
+  }
+
+  // Cache-first for everything else (fonts, icons)
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
