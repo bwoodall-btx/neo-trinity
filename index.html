@@ -80,9 +80,9 @@
     }
 
     .logo {
-      font-size: 10px;
+      font-size: 12px;
       letter-spacing: 4px;
-      color: var(--text-dim);
+      color: #5A9A5A;
     }
 
     .logo strong {
@@ -161,28 +161,28 @@
     .msg.user    { align-self: flex-end; }
 
     .msg-label {
-      font-size: 8px;
+      font-size: 10px;
       letter-spacing: 3px;
       color: var(--text-dim);
     }
     .msg.user .msg-label { text-align: right; }
 
     .msg-body {
-      font-size: 12px;
-      line-height: 1.65;
-      padding: 10px 13px;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 12px 15px;
     }
 
     .msg.trinity .msg-body {
-      background: rgba(0, 35, 0, 0.75);
+      background: rgba(0, 40, 0, 0.85);
       border-left: 2px solid var(--green-dim);
-      color: var(--text);
+      color: #E0FFE0;
     }
 
     .msg.user .msg-body {
-      background: rgba(0, 18, 0, 0.55);
+      background: rgba(0, 25, 0, 0.65);
       border-right: 2px solid var(--text-dim);
-      color: var(--text-dim);
+      color: #7ABF7A;
       text-align: right;
     }
 
@@ -207,6 +207,9 @@
       height: 96px;
       border-radius: 50%;
       border: 1.5px solid var(--green);
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
       background: radial-gradient(circle at 38% 35%, rgba(0,255,65,0.18), rgba(0,60,10,0.05));
       box-shadow: 0 0 22px var(--green-glow), 0 0 50px rgba(0,255,65,0.08), inset 0 0 18px rgba(0,255,65,0.04);
       cursor: pointer;
@@ -294,9 +297,9 @@
     }
 
     #orb-label {
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 3px;
-      color: var(--text-dim);
+      color: #5A9A5A;
       text-align: center;
     }
 
@@ -314,12 +317,12 @@
 
     .act {
       flex-shrink: 0;
-      padding: 7px 13px;
+      padding: 9px 15px;
       background: rgba(0, 25, 0, 0.85);
-      border: 1px solid rgba(0,255,65,0.15);
-      color: var(--text-dim);
+      border: 1px solid rgba(0,255,65,0.2);
+      color: #5A9A5A;
       font-family: inherit;
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 2px;
       cursor: pointer;
       transition: all 0.2s;
@@ -502,9 +505,9 @@
 
   <div id="orb-zone">
     <div id="orb-wrap">
-      <div id="orb" onclick="orbTap()">
+      <button id="orb" onclick="orbTap()" ontouchend="orbTap(); return false;" aria-label="Tap to speak">
         <span id="orb-icon">◉</span>
-      </div>
+      </button>
       <div id="wave">
         <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
         <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
