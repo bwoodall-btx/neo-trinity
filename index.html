@@ -1000,6 +1000,14 @@ function boot() {
     ? `${greeting()}, Ben.${briefingDue()?' Your morning briefing is loading…':' I\'m online and standing by.'}`
     : `${greeting()}, Ben. Trinity is standing by. Tap CONFIG to enter your API keys and activate voice.`;
   if (ready && briefingDue()) setTimeout(runBriefing, 1200);
+
+  // Pre-warm microphone permission on iOS — request access immediately so the
+  // permission dialog appears at launch rather than interrupting an orb tap
+  if (hasVoice() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => { stream.getTracks().forEach(t => t.stop()); })
+      .catch(() => {}); // silently ignore if denied — SpeechRecognition will handle it
+  }
 }
 
 boot();
