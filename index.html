@@ -516,7 +516,7 @@
       display: inline-block;
       overflow: hidden;
       opacity: 0;
-      font-size: clamp(13px, 3.3vw, 22px);
+      font-size: clamp(18px, 4.5vw, 32px);
       color: #00FF41;
       text-shadow: 0 0 8px rgba(0,255,65,0.5);
       transition: width 0.5s ease, opacity 0.4s ease,
@@ -525,6 +525,34 @@
 
     .splash-ch.keeper {
       text-shadow: 0 0 16px rgba(0,255,65,1), 0 0 35px rgba(0,255,65,0.6);
+    }
+
+    /* Tap-to-initialize gate */
+    #splash-gate {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    #gate-prompt {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: rgba(0, 255, 65, 0.55);
+      animation: gate-blink 1.3s ease-in-out infinite;
+      border: 1px solid rgba(0,255,65,0.2);
+      padding: 12px 24px;
+    }
+
+    @keyframes gate-blink {
+      0%, 100% { opacity: 0.7; }
+      50%       { opacity: 0.2; }
     }
 
     #splash-neo {
@@ -539,13 +567,9 @@
         0 0 180px rgba(0,255,65,0.2);
       position: absolute;
       opacity: 0;
-      transform: scale(0.3);
-      transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1);
+      transition: opacity 0.7s ease;
     }
-    #splash-neo.show {
-      opacity: 1;
-      transform: scale(1);
-    }
+    #splash-neo.show { opacity: 1; }
 
     #splash-trinity-label {
       font-family: 'Share Tech Mono', monospace;
@@ -604,6 +628,9 @@
 <!-- Splash Screen -->
 <div id="splash">
   <div id="splash-scan"></div>
+  <div id="splash-gate">
+    <div id="gate-prompt">INITIALIZE SYSTEM</div>
+  </div>
   <div id="splash-stage">
     <div id="splash-full"></div>
     <div id="splash-neo">NEO</div>
@@ -1042,38 +1069,49 @@ boot();
   }
 
   async function run() {
-    // ── Voice fires at start of splash ──
+    // ── Gate: wait for user tap to unlock iOS audio ──
+    await new Promise(resolve => {
+      const gate = document.getElementById('splash-gate');
+      gate.addEventListener('pointerdown', () => {
+        gate.style.display = 'none';
+        resolve();
+      }, { once: true });
+    });
+
+    // ── Voice fires immediately after tap (audio now unlocked) ──
     if (hasVoice()) {
       const welcome = "Welcome to the Novel Enterprise Operator — NEO. I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
       addMsg('trinity', welcome);
       speak(welcome);
     }
 
-    // Phase 1 — build spans, reveal container, typewriter left to right
+    // Phase 1 — typewriter left to right
     const spans = buildSpans();
     fullEl.style.opacity = '1';
-    await delay(300);
+    await delay(200);
     await typeIn(spans);
 
     // Hold the full title
     await delay(900);
 
-    // Phase 2 — collapse non-N/E/O letters leftward, leaving N  E  O
+    // Phase 2 — collapse non-N/E/O letters leftward
     await collapseToNEO(spans);
-    await delay(550);
 
-    // Phase 3 — swap to large NEO
+    // Hold N  E  O for 2 seconds
+    await delay(2000);
+
+    // Phase 3 — swap to large NEO (clean fade, no scale)
     fullEl.style.opacity = '0';
-    await delay(200);
+    await delay(250);
     neoEl.classList.add('show');
-    await delay(1400);
+    await delay(1600);
 
     // Phase 4 — NEO fades, TRINITY appears
     neoEl.classList.remove('show');
-    await delay(450);
+    await delay(500);
     trinityEl.classList.add('show');
     subEl.classList.add('show');
-    await delay(1600);
+    await delay(1700);
 
     // Phase 5 — exit splash
     trinityEl.classList.remove('show');
