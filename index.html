@@ -210,6 +210,7 @@
       -webkit-appearance: none;
       appearance: none;
       outline: none;
+      touch-action: manipulation;
       background: radial-gradient(circle at 38% 35%, rgba(0,255,65,0.18), rgba(0,60,10,0.05));
       box-shadow: 0 0 22px var(--green-glow), 0 0 50px rgba(0,255,65,0.08), inset 0 0 18px rgba(0,255,65,0.04);
       cursor: pointer;
@@ -665,7 +666,7 @@
 
   <div id="orb-zone">
     <div id="orb-wrap">
-      <button id="orb" aria-label="Tap to speak">
+      <button id="orb" aria-label="Tap to speak" onclick="orbTap()">
         <span id="orb-icon">◉</span>
       </button>
       <div id="wave">
@@ -1008,22 +1009,16 @@ boot();
    ORB — pointerdown is most reliable across iOS Safari PWA + desktop
 ───────────────────────────────────────── */
 (function () {
-  const orb = document.getElementById('orb');
+  // Deduplicate: touchstart fires before click on mobile; track last fire time
   let lastFire = 0;
-
-  function handleOrb() {
+  window._orbFire = function() {
     const now = Date.now();
     if (now - lastFire < 600) return;
     lastFire = now;
     orbTap();
-  }
-
-  // touchstart for iOS (fastest, no 300ms delay), click as desktop fallback
-  orb.addEventListener('touchstart', handleOrb, { passive: true });
-  orb.addEventListener('click', function(e) {
-    // only fire click if touchstart didn't already handle it
-    if (Date.now() - lastFire > 300) handleOrb();
-  });
+  };
+  const orb = document.getElementById('orb');
+  orb.addEventListener('touchstart', window._orbFire, { passive: true });
 })();
 
 /* ─────────────────────────────────────────
