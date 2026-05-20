@@ -611,7 +611,8 @@
 const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', lastDay: 'T_LAST_BRIEF_DAY' };
 
 function cfg()     { return { key: localStorage.getItem(SK.key)||'', vid: localStorage.getItem(SK.vid)||'', hook: localStorage.getItem(SK.hook)||'' }; }
-function isReady() { const c=cfg(); return !!(c.key && c.vid && c.hook); }
+function isReady()      { const c=cfg(); return !!(c.key && c.vid && c.hook); }
+function hasVoice()     { const c=cfg(); return !!(c.key && c.vid); }
 
 /* ─────────────────────────────────────────
    MODAL
@@ -771,7 +772,7 @@ function stopListening() { if(_rec){_rec.stop();_rec=null;} }
    ORB
 ───────────────────────────────────────── */
 function orbTap() {
-  if (!isReady())           { openModal(); return; }
+  if (!hasVoice())          { openModal(); return; }
   if (state==='idle')       startListening();
   else if (state==='listening') stopListening();
   else if (state==='speaking'&&_audio) { _audio.pause(); _audio=null; setState('idle'); }
@@ -797,7 +798,7 @@ async function processRequest(action, input) {
    QUICK ACTIONS
 ───────────────────────────────────────── */
 async function quickAction(action, input) {
-  if (!isReady()) { openModal(); return; }
+  if (!hasVoice()) { openModal(); return; }
   if (state!=='idle') return;
   addMsg('user', input);
   setState('processing');
