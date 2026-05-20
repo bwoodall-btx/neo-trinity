@@ -501,15 +501,30 @@
 
     #splash-full {
       font-family: 'Share Tech Mono', monospace;
-      font-size: clamp(11px, 2.6vw, 17px);
-      letter-spacing: 5px;
-      color: #00FF41;
-      text-shadow: 0 0 10px rgba(0,255,65,0.8), 0 0 25px rgba(0,255,65,0.3);
       position: absolute;
-      width: calc(100% - 56px);
-      line-height: 1.8;
+      width: calc(100% - 48px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      flex-wrap: nowrap;
       opacity: 0;
       transition: opacity 0.5s ease;
+    }
+
+    .splash-ch {
+      display: inline-block;
+      overflow: hidden;
+      opacity: 0;
+      font-size: clamp(13px, 3.3vw, 22px);
+      color: #00FF41;
+      text-shadow: 0 0 8px rgba(0,255,65,0.5);
+      transition: width 0.5s ease, opacity 0.4s ease,
+                  padding 0.5s ease, margin 0.5s ease;
+    }
+
+    .splash-ch.keeper {
+      text-shadow: 0 0 16px rgba(0,255,65,1), 0 0 35px rgba(0,255,65,0.6);
     }
 
     #splash-neo {
@@ -977,49 +992,90 @@ boot();
    SPLASH SEQUENCE
 ───────────────────────────────────────── */
 (function () {
-  const splash       = document.getElementById('splash');
-  const fullEl       = document.getElementById('splash-full');
-  const neoEl        = document.getElementById('splash-neo');
-  const trinityEl    = document.getElementById('splash-trinity-label');
-  const subEl        = document.getElementById('splash-sub');
-  const title        = 'NOVEL\nENTERPRISE\nOPERATOR';
-  const displayLines = title.split('\n');
+  const splash    = document.getElementById('splash');
+  const fullEl    = document.getElementById('splash-full');
+  const neoEl     = document.getElementById('splash-neo');
+  const trinityEl = document.getElementById('splash-trinity-label');
+  const subEl     = document.getElementById('splash-sub');
+
+  // "NOVEL ENTERPRISE OPERATOR"
+  // Keeper indices: N=0, E=6 (first of ENTERPRISE), O=17 (first of OPERATOR)
+  const TITLE   = 'NOVEL ENTERPRISE OPERATOR';
+  const KEEPERS = new Set([0, 6, 17]);
 
   function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  async function run() {
-    // Phase 1 — type out full title line by line
-    fullEl.style.opacity = '1';
+  function buildSpans() {
     fullEl.innerHTML = '';
+    return TITLE.split('').map((ch, i) => {
+      const s = document.createElement('span');
+      s.className = 'splash-ch' + (KEEPERS.has(i) ? ' keeper' : '');
+      s.textContent = ch === ' ' ? ' ' : ch;
+      fullEl.appendChild(s);
+      return { el: s, keeper: KEEPERS.has(i) };
+    });
+  }
 
-    for (const line of displayLines) {
-      const lineEl = document.createElement('div');
-      lineEl.style.minHeight = '1.4em';
-      fullEl.appendChild(lineEl);
-      for (const ch of line) {
-        lineEl.textContent += ch;
-        await delay(ch === ' ' ? 30 : 55);
+  async function typeIn(spans) {
+    for (const { el } of spans) {
+      el.style.opacity = '1';
+      await delay(el.textContent === ' ' ? 25 : 48);
+    }
+  }
+
+  async function collapseToNEO(spans) {
+    // Lock each span's current rendered width so CSS can transition to 0
+    spans.forEach(({ el }) => {
+      el.style.width = el.getBoundingClientRect().width + 'px';
+    });
+    void fullEl.offsetHeight; // force reflow
+
+    // Collapse all non-keepers leftward
+    spans.forEach(({ el, keeper }) => {
+      if (!keeper) {
+        el.style.width   = '0';
+        el.style.opacity = '0';
+        el.style.padding = '0';
+        el.style.margin  = '0';
       }
-      await delay(80);
+    });
+  }
+
+  async function run() {
+    // ── Voice fires at start of splash ──
+    if (hasVoice()) {
+      const welcome = "Welcome to the Novel Enterprise Operator — NEO. I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
+      addMsg('trinity', welcome);
+      speak(welcome);
     }
 
-    // Hold full title
+    // Phase 1 — build spans, reveal container, typewriter left to right
+    const spans = buildSpans();
+    fullEl.style.opacity = '1';
+    await delay(300);
+    await typeIn(spans);
+
+    // Hold the full title
     await delay(900);
 
-    // Phase 2 — collapse title, reveal NEO
+    // Phase 2 — collapse non-N/E/O letters leftward, leaving N  E  O
+    await collapseToNEO(spans);
+    await delay(550);
+
+    // Phase 3 — swap to large NEO
     fullEl.style.opacity = '0';
-    await delay(350);
+    await delay(200);
     neoEl.classList.add('show');
     await delay(1400);
 
-    // Phase 3 — fade NEO, reveal TRINITY + sub
+    // Phase 4 — NEO fades, TRINITY appears
     neoEl.classList.remove('show');
-    await delay(500);
+    await delay(450);
     trinityEl.classList.add('show');
     subEl.classList.add('show');
     await delay(1600);
 
-    // Phase 4 — fade out splash, reveal app
+    // Phase 5 — exit splash
     trinityEl.classList.remove('show');
     subEl.classList.remove('show');
     await delay(600);
