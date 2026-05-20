@@ -932,6 +932,7 @@ function stopListening() { if(_rec){_rec.stop();_rec=null;} }
    ORB
 ───────────────────────────────────────── */
 function orbTap() {
+  toast('ORB ▸ ' + state);
   if (!hasVoice())          { openModal(); return; }
   if (state==='idle')       startListening();
   else if (state==='listening') stopListening();
@@ -1004,14 +1005,20 @@ boot();
 ───────────────────────────────────────── */
 (function () {
   const orb = document.getElementById('orb');
-  let didFire = false;
+  let lastFire = 0;
 
-  orb.addEventListener('pointerdown', function (e) {
-    e.preventDefault();
-    if (didFire) return;
-    didFire = true;
+  function handleOrb() {
+    const now = Date.now();
+    if (now - lastFire < 600) return;
+    lastFire = now;
     orbTap();
-    setTimeout(() => { didFire = false; }, 400);
+  }
+
+  // touchstart for iOS (fastest, no 300ms delay), click as desktop fallback
+  orb.addEventListener('touchstart', handleOrb, { passive: true });
+  orb.addEventListener('click', function(e) {
+    // only fire click if touchstart didn't already handle it
+    if (Date.now() - lastFire > 300) handleOrb();
   });
 })();
 
