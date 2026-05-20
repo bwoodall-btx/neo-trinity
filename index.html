@@ -909,7 +909,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let _rec = null;
 
 function startListening() {
-  if (!isReady()) { openModal(); return; }
+  if (!hasVoice()) { openModal(); return; }
   if (state==='speaking'||state==='processing') return;
   if (!SR) { toast('SPEECH NOT AVAILABLE IN THIS BROWSER'); return; }
   _rec = new SR();
