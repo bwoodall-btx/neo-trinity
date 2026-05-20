@@ -305,28 +305,25 @@
 
     /* ── Quick Actions ── */
     #actions {
-      display: flex;
-      gap: 7px;
-      padding: 0 14px 14px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 0 14px 12px;
       flex-shrink: 0;
     }
-    #actions::-webkit-scrollbar { display: none; }
 
     .act {
-      flex-shrink: 0;
-      padding: 9px 15px;
+      padding: 10px 6px;
       background: rgba(0, 25, 0, 0.85);
       border: 1px solid rgba(0,255,65,0.2);
       color: #5A9A5A;
       font-family: inherit;
-      font-size: 11px;
-      letter-spacing: 2px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
       cursor: pointer;
       transition: all 0.2s;
-      white-space: nowrap;
+      text-align: center;
+      line-height: 1.4;
     }
     .act:hover, .act:active {
       background: rgba(0, 55, 0, 0.85);
@@ -505,7 +502,7 @@
 
   <div id="orb-zone">
     <div id="orb-wrap">
-      <button id="orb" onclick="orbTap()" ontouchend="orbTap(); return false;" aria-label="Tap to speak">
+      <button id="orb" aria-label="Tap to speak">
         <span id="orb-icon">◉</span>
       </button>
       <div id="wave">
@@ -519,11 +516,12 @@
   </div>
 
   <div id="actions">
-    <button class="act" onclick="quickAction('briefing',   'Give me my morning briefing.')">◈ BRIEFING</button>
-    <button class="act" onclick="quickAction('calendar',   'What does my day look like?')">⊡ CALENDAR</button>
-    <button class="act" onclick="quickAction('email',      'I need to draft an email.')">✉ DRAFT EMAIL</button>
-    <button class="act" onclick="quickAction('neo_status', 'What is the current NEO system status?')">⊞ NEO STATUS</button>
-    <button class="act" onclick="startListening()">⏱ REMIND ME</button>
+    <button class="act" onclick="quickAction('briefing',   'Give me my morning briefing.')">◈<br>BRIEFING</button>
+    <button class="act" onclick="quickAction('calendar',   'What does my day look like?')">⊡<br>CALENDAR</button>
+    <button class="act" onclick="quickAction('email',      'I need to draft an email.')">✉<br>EMAIL</button>
+    <button class="act" onclick="quickAction('neo_status', 'What is the current NEO system status?')">⊞<br>NEO STATUS</button>
+    <button class="act" onclick="startListening()">⏱<br>REMIND ME</button>
+    <button class="act" onclick="openModal()">⚙<br>CONFIG</button>
   </div>
 
 </div>
@@ -841,6 +839,26 @@ function boot() {
 }
 
 boot();
+
+/* ─────────────────────────────────────────
+   ORB TOUCH — attached via JS for iOS Safari reliability
+   preventDefault on touchstart blocks the ghost click that fires after touchend
+───────────────────────────────────────── */
+(function () {
+  const orb = document.getElementById('orb');
+
+  orb.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  orb.addEventListener('touchend', function (e) {
+    e.preventDefault();
+    orbTap();
+  }, { passive: false });
+
+  // Desktop mouse fallback
+  orb.addEventListener('click', orbTap);
+})();
 </script>
 </body>
 </html>
