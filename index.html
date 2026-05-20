@@ -469,6 +469,9 @@
       opacity: 0;
       pointer-events: none;
     }
+    #splash.out * {
+      pointer-events: none;
+    }
 
     /* Scan line sweeping down */
     #splash-scan {
@@ -1120,10 +1123,17 @@ boot();
     await delay(600);
     splash.classList.add('out');
     await delay(1000);
-    splash.style.display = 'none';
+    splash.remove(); // remove from DOM so nothing inside can block touches
   }
 
-  run();
+  function exitSplash() {
+    // Safety: if anything goes wrong in run(), force-remove the splash
+    splash.remove();
+  }
+
+  run().catch(exitSplash);
+  // Hard timeout fallback — if splash hasn't exited in 18s, force-remove it
+  setTimeout(exitSplash, 18000);
 })();
 </script>
 </body>
