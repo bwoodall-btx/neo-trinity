@@ -880,7 +880,7 @@ async function speak(text) {
     if (!res.ok) throw new Error('eleven');
     const url = URL.createObjectURL(await res.blob());
     _audio = new Audio(url);
-    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); };
+    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); setTimeout(() => { if (state==='idle' && hasVoice() && SR) startListening(); }, 700); };
     _audio.onerror = () => setState('idle');
     await _audio.play();
   } catch(e) {
