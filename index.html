@@ -340,10 +340,12 @@
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(1, 8, 1, 0.97);
+      background: rgba(1, 10, 1, 0.98);
       flex-direction: column;
-      padding: max(env(safe-area-inset-top), 24px) 22px max(env(safe-area-inset-bottom), 20px);
+      padding: max(env(safe-area-inset-top), 28px) 28px max(env(safe-area-inset-bottom), 24px);
       overflow-y: auto;
+      max-width: 640px;
+      margin: 0 auto;
     }
     #modal.open { display: flex; }
 
@@ -351,99 +353,100 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 28px;
+      margin-bottom: 32px;
     }
 
     .modal-title {
-      font-size: 10px;
+      font-size: 13px;
       letter-spacing: 4px;
       color: var(--green);
     }
 
     .modal-close {
       background: none;
-      border: 1px solid rgba(0,255,65,0.2);
-      color: var(--text-dim);
+      border: 1px solid rgba(0,255,65,0.35);
+      color: #80C080;
       font-family: inherit;
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 2px;
-      padding: 6px 12px;
+      padding: 8px 16px;
       cursor: pointer;
       transition: all 0.2s;
     }
     .modal-close:hover { border-color: var(--green); color: var(--green); }
 
     .section-head {
-      font-size: 8px;
-      letter-spacing: 4px;
-      color: var(--green-mid);
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(0,255,65,0.08);
-      margin-bottom: 18px;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--green-dim);
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0,255,65,0.15);
+      margin-bottom: 20px;
     }
 
     .field {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .field label {
       display: block;
-      font-size: 8px;
-      letter-spacing: 3px;
-      color: var(--text-dim);
-      margin-bottom: 7px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #90D090;
+      margin-bottom: 8px;
     }
 
     .field input {
       width: 100%;
-      background: rgba(0,18,0,0.85);
-      border: 1px solid rgba(0,255,65,0.18);
-      color: var(--text);
+      background: rgba(0, 25, 0, 0.9);
+      border: 1px solid rgba(0,255,65,0.3);
+      color: #D8FFD8;
       font-family: inherit;
-      font-size: 12px;
-      padding: 11px 13px;
+      font-size: 13px;
+      padding: 13px 15px;
       outline: none;
       transition: border-color 0.2s;
       -webkit-user-select: text;
       user-select: text;
     }
-    .field input:focus { border-color: var(--green-dim); }
+    .field input::placeholder { color: rgba(0,255,65,0.3); }
+    .field input:focus { border-color: var(--green); background: rgba(0, 35, 0, 0.95); }
 
     .field-hint {
-      font-size: 9px;
-      color: var(--text-dim);
-      margin-top: 5px;
-      line-height: 1.55;
+      font-size: 11px;
+      color: #6AAA6A;
+      margin-top: 7px;
+      line-height: 1.65;
     }
 
     .btn-row {
       display: flex;
-      gap: 8px;
-      margin-top: 6px;
+      gap: 10px;
+      margin-top: 8px;
     }
 
     .btn-primary {
       flex: 1;
-      background: rgba(0, 55, 0, 0.85);
+      background: rgba(0, 70, 0, 0.9);
       border: 1px solid var(--green-dim);
       color: var(--green);
       font-family: inherit;
-      font-size: 10px;
+      font-size: 12px;
       letter-spacing: 3px;
-      padding: 13px;
+      padding: 15px;
       cursor: pointer;
       transition: all 0.2s;
     }
-    .btn-primary:hover { background: rgba(0, 80, 0, 0.85); }
+    .btn-primary:hover { background: rgba(0, 100, 0, 0.9); border-color: var(--green); }
 
     .btn-secondary {
       background: none;
-      border: 1px solid rgba(0,255,65,0.18);
-      color: var(--text-dim);
+      border: 1px solid rgba(0,255,65,0.3);
+      color: #80C080;
       font-family: inherit;
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 2px;
-      padding: 13px 16px;
+      padding: 15px 18px;
       cursor: pointer;
       transition: all 0.2s;
       white-space: nowrap;
@@ -451,9 +454,9 @@
     .btn-secondary:hover { border-color: var(--green-dim); color: var(--green-dim); }
 
     .divider {
-      margin: 28px 0 22px;
+      margin: 30px 0 24px;
       border: none;
-      border-top: 1px solid rgba(0,255,65,0.08);
+      border-top: 1px solid rgba(0,255,65,0.12);
     }
 
     /* ── Splash Screen ── */
@@ -720,12 +723,12 @@
 
   <hr class="divider">
 
-  <div class="section-head">INTELLIGENCE — ANTHROPIC</div>
+  <div class="section-head">INTELLIGENCE — CLAUDE PROXY</div>
 
   <div class="field">
-    <label>ANTHROPIC API KEY</label>
-    <input type="password" id="f-ak" placeholder="sk-ant-…" autocomplete="off">
-    <div class="field-hint">console.anthropic.com → API Keys → Create Key. Trinity uses this to call Claude directly — no Make.com rate limits.</div>
+    <label>PROXY URL</label>
+    <input type="url" id="f-ak" placeholder="https://neo-trinity-proxy.yourname.workers.dev" autocomplete="off">
+    <div class="field-hint">Your Cloudflare Worker URL — proxies requests to Claude with your API key stored securely server-side.</div>
   </div>
 
   <hr class="divider">
@@ -944,18 +947,13 @@ RESPONSE GUIDELINES
 ───────────────────────────────────────── */
 async function callClaude(userMessage) {
   const c = cfg();
-  if (!c.ak) throw new Error('no-anthropic-key');
+  if (!c.ak) throw new Error('no-proxy-url');
 
   _history.push({ role: 'user', content: userMessage });
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(c.ak, {
     method: 'POST',
-    headers: {
-      'x-api-key': c.ak,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-calls': 'true',
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: TRINITY_MODEL,
       max_tokens: 1024,
