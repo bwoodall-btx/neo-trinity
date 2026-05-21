@@ -1165,9 +1165,9 @@ function sanitizeForTTS(text) {
 ───────────────────────────────────────── */
 async function saveMemory(entry) {
   const c = cfg();
-  if (!c.memhook) return;
+  if (!c.ak) return;
   try {
-    await fetch(c.memhook, {
+    await fetch(c.ak + '/memory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entry }),
