@@ -870,18 +870,24 @@ function addMsg(role, text) {
 ───────────────────────────────────────── */
 const TRINITY_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 when ready
 
-let _memory   = '';   // TRINITY_MEMORY.md from GitHub
-let _modIndex = '';   // TRINITY_MOD_INDEX.md from GitHub
+let _memory   = '';   // TRINITY_MEMORY.md — loaded from Google Drive via proxy
+let _modIndex = '';   // TRINITY_MOD_INDEX.md — loaded from Google Drive via proxy
 let _history  = [];   // conversation history (multi-turn within session)
 
 async function loadContextFiles() {
-  const base = 'https://raw.githubusercontent.com/bwoodall-btx/neo-trinity/main/';
-  const [mem, mod] = await Promise.allSettled([
-    fetch(base + 'TRINITY_MEMORY.md').then(r => r.ok ? r.text() : ''),
-    fetch(base + 'TRINITY_MOD_INDEX.md').then(r => r.ok ? r.text() : ''),
-  ]);
-  _memory   = mem.status === 'fulfilled'  ? mem.value  : '';
-  _modIndex = mod.status === 'fulfilled'  ? mod.value  : '';
+  const c = cfg();
+  if (!c.ak) return; // no proxy URL configured yet
+  try {
+    const res = await fetch(c.ak + '/context');
+    if (res.ok) {
+      const data = await res.json();
+      _memory   = data.memory   || '';
+      _modIndex = data.modIndex || '';
+    }
+  } catch (e) {
+    console.warn('loadContextFiles failed:', e);
+    // Non-fatal — Trinity still works without context files
+  }
 }
 
 function buildSystemPrompt() {
@@ -926,7 +932,7 @@ Agents use character names from The Matrix. Trinity = Executive Assistant (you).
 
 MASTER ORGANIZATIONAL DIRECTORY (MOD)
 Centralized file repository for all NEO agents. Google Drive: My Drive/Claude Projects/NEO/MOD/
-${_modIndex ? '\n' + _modIndex : 'MOD index not loaded — check TRINITY_MOD_INDEX.md in GitHub repo.'}
+${_modIndex ? '\n' + _modIndex : 'MOD index not loaded — file may not be publicly shared in Google Drive yet.'}
 
 CURRENT DATE & TIME (Central Time)
 ${now}
@@ -935,7 +941,7 @@ CALENDAR
 Calendar integration is planned but not yet connected. If Ben asks about his schedule, let him know calendar access is coming in a future build.
 
 PERSISTENT MEMORY
-${_memory ? _memory : 'No memory file loaded. Add notes to TRINITY_MEMORY.md in the neo-trinity GitHub repo to persist instructions, tasks, and context across sessions.'}
+${_memory ? _memory : 'No memory file loaded — TRINITY_MEMORY.md may not be publicly shared in Google Drive yet.'}
 
 RESPONSE GUIDELINES
 - This is a voice interface. Respond in 1 to 3 sentences maximum unless Ben explicitly asks for more detail. If a topic needs more depth, summarize first and offer to elaborate.
