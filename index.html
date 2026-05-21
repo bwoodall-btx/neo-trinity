@@ -843,6 +843,21 @@ function addMsg(role, text) {
 }
 
 /* ─────────────────────────────────────────
+   GLITCH RESPONSES
+───────────────────────────────────────── */
+function _matrixGlitch() {
+  const msgs = [
+    "Whoa... déjà vu. There must be a glitch in the Matrix. Try that again.",
+    "Hmm. Something just flickered. Let's try that one more time.",
+    "I felt a disturbance in the signal. Ask me again.",
+    "A black cat just walked by twice. Give me a moment and try again.",
+    "The Matrix is being uncooperative right now. One more time.",
+    "Glitch detected. Even the Oracle has off days. Try again.",
+  ];
+  return msgs[Math.floor(Math.random() * msgs.length)];
+}
+
+/* ─────────────────────────────────────────
    BACKEND  (Make.com webhook)
 ───────────────────────────────────────── */
 async function callBackend(action, input) {
@@ -853,7 +868,7 @@ async function callBackend(action, input) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, input: input||'', timestamp: new Date().toISOString(), timezone: 'America/Chicago' }),
   });
-  if (!res.ok) return { response: 'I am having trouble reaching my backend right now. Please try again in a moment.' };
+  if (!res.ok) return { response: _matrixGlitch() };
   const ct = res.headers.get('content-type')||'';
   return ct.includes('json') ? res.json() : res.text().then(t => ({ response: t }));
 }
@@ -954,7 +969,7 @@ async function processRequest(action, input) {
     await speak(reply);
   } catch(e) {
     console.error('request', e);
-    addMsg('trinity', 'I ran into a connectivity issue. Check your configuration and try again.');
+    addMsg('trinity', _matrixGlitch());
     setState('idle');
   }
 }
