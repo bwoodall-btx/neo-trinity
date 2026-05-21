@@ -51,6 +51,7 @@
       z-index: 0;
       opacity: 0.10;
       pointer-events: none;
+      transition: opacity 0.8s ease;
     }
 
     /* ── App Shell ── */
@@ -107,16 +108,17 @@
 
     #cfg-btn {
       background: none;
-      border: 1px solid rgba(0, 255, 65, 0.15);
-      color: var(--text-dim);
+      border: 1px solid rgba(0, 255, 65, 0.45);
+      color: var(--green-dim);
       font-family: inherit;
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: 2px;
-      padding: 5px 10px;
+      padding: 7px 16px;
       cursor: pointer;
       transition: all 0.2s;
+      box-shadow: 0 0 8px rgba(0,255,65,0.12);
     }
-    #cfg-btn:hover { border-color: var(--green); color: var(--green); }
+    #cfg-btn:hover { border-color: var(--green); color: var(--green); box-shadow: 0 0 12px rgba(0,255,65,0.3); }
 
     /* ── Banner ── */
     #banner {
@@ -306,20 +308,9 @@
       text-align: center;
     }
 
-    /* ── Quick Actions ── */
-    #actions {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      padding: 0 14px 12px;
-      flex-shrink: 0;
-    }
-
+    /* ── Quick Actions (removed) ── */
     .act {
-      padding: 10px 6px;
-      background: rgba(0, 25, 0, 0.85);
-      border: 1px solid rgba(0,255,65,0.2);
-      color: #5A9A5A;
+      display: none;
       font-family: inherit;
       font-size: 10px;
       letter-spacing: 1.5px;
@@ -683,14 +674,6 @@
     <div id="orb-label">TAP TO SPEAK</div>
   </div>
 
-  <div id="actions">
-    <button class="act" onclick="quickAction('briefing',   'Give me my morning briefing.')">◈<br>BRIEFING</button>
-    <button class="act" onclick="quickAction('calendar',   'What does my day look like?')">⊡<br>CALENDAR</button>
-    <button class="act" onclick="quickAction('email',      'I need to draft an email.')">✉<br>EMAIL</button>
-    <button class="act" onclick="quickAction('neo_status', 'What is the current NEO system status?')">⊞<br>NEO STATUS</button>
-    <button class="act" onclick="startListening()">⏱<br>REMIND ME</button>
-    <button class="act" onclick="openModal()">⚙<br>CONFIG</button>
-  </div>
 
 </div>
 
@@ -731,21 +714,9 @@
     <div class="field-hint">Your Cloudflare Worker URL — proxies requests to Claude with your API key stored securely server-side.</div>
   </div>
 
-  <hr class="divider">
-
-  <div class="section-head">INTEGRATIONS — MAKE.COM</div>
-
-  <div class="field">
-    <label>MEMORY WRITER WEBHOOK</label>
-    <input type="url" id="f-memhook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
-    <div class="field-hint">NEO — Trinity Memory Writer webhook — Trinity uses this to save new memories to TRINITY_MEMORY.md in Google Drive.</div>
-  </div>
-
-  <div class="field">
-    <label>REQUEST HANDLER WEBHOOK</label>
-    <input type="url" id="f-hook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
-    <div class="field-hint">Trinity Request Handler webhook — used for calendar and agentic actions. Optional for basic conversation.</div>
-  </div>
+  <!-- Webhook fields retained in JS/storage but hidden until calendar integration is built -->
+  <input type="hidden" id="f-memhook">
+  <input type="hidden" id="f-hook">
 
   <div class="btn-row">
     <button class="btn-primary" onclick="saveConfig()">SAVE CONFIGURATION</button>
@@ -758,13 +729,18 @@
 
 <script>
 /* ─────────────────────────────────────────
-   MATRIX RAIN
+   MATRIX RAIN — state-aware
+   idle:       slow, dim    (65ms, 0.10)
+   listening:  medium, dim  (42ms, 0.16)
+   processing: medium       (42ms, 0.18)
+   speaking:   fast, bright (22ms, 0.32)
 ───────────────────────────────────────── */
-(function () {
+const _rain = (function () {
   const cv = document.getElementById('rain');
   const cx = cv.getContext('2d');
   const CH = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEFGHIJKLMNO';
-  let cols, drops;
+  let cols, drops, _iv;
+  let _speed = 65, _fade = 'rgba(1,10,1,0.055)', _bright = '#00FF41';
 
   function resize() {
     cv.width  = window.innerWidth;
@@ -774,20 +750,32 @@
   }
 
   function tick() {
-    cx.fillStyle = 'rgba(1,10,1,0.055)';
+    cx.fillStyle = _fade;
     cx.fillRect(0, 0, cv.width, cv.height);
-    cx.fillStyle = '#00FF41';
     cx.font = '13px Share Tech Mono, monospace';
     drops.forEach((y, i) => {
+      // Lead character brighter, trail fades naturally
+      cx.fillStyle = _bright;
       cx.fillText(CH[Math.random() * CH.length | 0], i * 18, y * 18);
       if (y * 18 > cv.height && Math.random() > 0.974) drops[i] = 0;
       drops[i]++;
     });
   }
 
+  function setRainState(speed, opacity, fade, color) {
+    _speed  = speed;
+    _fade   = fade;
+    _bright = color;
+    cv.style.opacity = opacity;
+    clearInterval(_iv);
+    _iv = setInterval(tick, speed);
+  }
+
   resize();
   window.addEventListener('resize', resize);
-  setInterval(tick, 65);
+  _iv = setInterval(tick, 65);
+
+  return { setRainState };
 })();
 
 /* ─────────────────────────────────────────
@@ -855,10 +843,21 @@ function setState(s) {
   const lbl  = document.getElementById('orb-label');
   const icon = document.getElementById('orb-icon');
   switch (s) {
-    case 'idle':       lbl.textContent='TAP TO SPEAK';    icon.textContent='◉'; break;
-    case 'listening':  lbl.textContent='LISTENING…';      icon.textContent='●'; break;
-    case 'processing': lbl.textContent='PROCESSING…';     icon.textContent='◉'; break;
+    case 'idle':       lbl.textContent='TAP TO SPEAK';     icon.textContent='◉'; break;
+    case 'listening':  lbl.textContent='LISTENING…';       icon.textContent='●'; break;
+    case 'processing': lbl.textContent='PROCESSING…';      icon.textContent='◉'; break;
     case 'speaking':   lbl.textContent='TRINITY SPEAKING'; icon.textContent='◎'; break;
+  }
+  // Rain animation responds to state
+  switch (s) {
+    case 'speaking':
+      _rain.setRainState(22,  '0.32', 'rgba(1,10,1,0.025)', '#00FF41'); break;
+    case 'processing':
+      _rain.setRainState(42,  '0.18', 'rgba(1,10,1,0.045)', '#00CC33'); break;
+    case 'listening':
+      _rain.setRainState(42,  '0.16', 'rgba(1,10,1,0.048)', '#00CC33'); break;
+    default:
+      _rain.setRainState(65,  '0.10', 'rgba(1,10,1,0.055)', '#00FF41'); break;
   }
 }
 
