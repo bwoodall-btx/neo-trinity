@@ -860,7 +860,7 @@ function _matrixGlitch() {
 /* ─────────────────────────────────────────
    BACKEND  (Make.com webhook)
 ───────────────────────────────────────── */
-async function callBackend(action, input) {
+async function callBackend(action, input, _retries = 3) {
   const c = cfg();
   if (!c.hook) throw new Error('no-webhook');
   const res = await fetch(c.hook, {
@@ -868,6 +868,10 @@ async function callBackend(action, input) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, input: input||'', timestamp: new Date().toISOString(), timezone: 'America/Chicago' }),
   });
+  if (res.status === 429 && _retries > 0) {
+    await new Promise(r => setTimeout(r, 2500));
+    return callBackend(action, input, _retries - 1);
+  }
   if (!res.ok) return { response: _matrixGlitch() };
   const ct = res.headers.get('content-type')||'';
   return ct.includes('json') ? res.json() : res.text().then(t => ({ response: t }));
