@@ -74,3 +74,11 @@ All files use MMDDYY suffix: `FileName_MMDDYY.ext` (e.g., `Report_052026.pdf`)
 1. **Agent Files** — operational: SOPs, build docs, prompts, logs, source data (in agent folders)
 2. **Reference Files** — content agents/employees look up (in Knowledge Base)
 3. **Shared Knowledge** — cross-agent reference like ePIC KB, product manuals (in Knowledge Base/Tools & Systems)
+
+---
+
+## Agent Naming Convention
+NEO agents use character names from The Matrix:
+- **Trinity** = Executive Assistant (CA: EA)
+- **Morpheus** = Chief Agent (CA) — Make.com scenario still named 'NEO — Chief Agent v1'; operational name is Morpheus
+- Additional agents will follow this convention as built

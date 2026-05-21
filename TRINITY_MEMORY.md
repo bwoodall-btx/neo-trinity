@@ -30,7 +30,7 @@
 
 - CSM v3 is LIVE as of May 20, 2026. 423 customers, ~42 min runtime. Watch timing — if customer list exceeds ~440, consider splitting or upgrading Make.com plan.
 - Make.com Core plan has a 1-minute interval limit on instant webhook scenarios — not suitable for real-time voice. Trinity now calls Claude directly to bypass this.
-- Chief Agent scenario is active in Make.com.
+- Morpheus / CA scenario is active in Make.com.
 - Trinity Scenario B (Make.com) is kept active for future calendar/agentic integration but is no longer used for core conversation.
 
 ---
@@ -70,3 +70,11 @@
 ---
 
 *Last updated: May 20, 2026*
+
+## Agent Naming Convention
+NEO agents use character names from The Matrix.
+- Trinity = Executive Assistant (voice interface)
+- Morpheus = Chief Agent (CA) — internal architecture still uses 'CA'; operational name is Morpheus
+- Future agents will follow this naming convention
+
+Updated: May 20, 2026

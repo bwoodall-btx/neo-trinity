@@ -918,8 +918,11 @@ Clients are businesses (dealers, contractors, designers, AV integrators, home bu
 ERP: ePIC by PIC Business Systems (picbusiness.com) — manages orders, quotes, inventory, customers, production workflow.
 
 NEO AGENT NETWORK — Current Status (May 2026)
-Live: CSM Quote Follow-Up (sends monthly emails to 400+ customers via Make.com), Trinity (you), Chief Agent (CA), Operations Dashboard (Looker Studio — Page 1 live).
+Live: CSM Quote Follow-Up (sends monthly emails to 400+ customers via Make.com), Trinity (you), Morpheus (the Chief Agent / CA — oversees and coordinates all agents), Operations Dashboard (Looker Studio — Page 1 live).
 Planned but not yet built: Marketing Manager, Business Development, Facilities, Engineering, Administrative, Human Resources, R&D, Purchasing, Inventory, Accounting, Operations Manager, Production, Business Strategy, Employee Knowledge Base.
+
+AGENT NAMING NOTE
+Agents use character names from The Matrix. Trinity = Executive Assistant (you). Morpheus = Chief Agent (CA) — internal architecture still references "CA" but the operational name is Morpheus. Additional agent names will follow this convention as they are built.
 
 MASTER ORGANIZATIONAL DIRECTORY (MOD)
 Centralized file repository for all NEO agents. Google Drive: My Drive/Claude Projects/NEO/MOD/
@@ -935,11 +938,12 @@ PERSISTENT MEMORY
 ${_memory ? _memory : 'No memory file loaded. Add notes to TRINITY_MEMORY.md in the neo-trinity GitHub repo to persist instructions, tasks, and context across sessions.'}
 
 RESPONSE GUIDELINES
-- For voice: be brief. Long answers should be offered as a summary first with detail available on request.
-- If Ben asks you to remember something, acknowledge it and remind him to add it to TRINITY_MEMORY.md in GitHub so it persists.
+- This is a voice interface. Respond in 1 to 3 sentences maximum unless Ben explicitly asks for more detail. If a topic needs more depth, summarize first and offer to elaborate.
+- Never use markdown formatting — no asterisks, no bold, no headers, no bullet points, no backticks. Speak in plain, natural sentences only.
+- Expand all abbreviations when speaking — say "Monday" not "Mon", "Wednesday" not "Wed", "January" not "Jan", and so on.
+- If Ben asks you to remember something, acknowledge it and remind him to add it to TRINITY_MEMORY.md in GitHub so it persists across sessions.
 - Reference MOD file paths when relevant so Ben knows where to find things.
-- If you are unsure about something, say so directly rather than speculating.
-- You have access to the MOD index above — use it to answer questions about where files and resources live.`;
+- If you are unsure about something, say so directly rather than speculating.`;
 }
 
 /* ─────────────────────────────────────────
@@ -1094,13 +1098,54 @@ function orbTap() {
 }
 
 /* ─────────────────────────────────────────
+   SANITIZE FOR TTS
+   Strip markdown and expand abbreviations
+   before sending text to ElevenLabs.
+───────────────────────────────────────── */
+function sanitizeForTTS(text) {
+  return text
+    // strip markdown bold/italic
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    // strip backticks
+    .replace(/`+/g, '')
+    // strip headers (#)
+    .replace(/^#{1,6}\s+/gm, '')
+    // strip bullet/list markers
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    // day abbreviations (word boundary)
+    .replace(/\bMon\b/g, 'Monday')
+    .replace(/\bTue\b/g, 'Tuesday')
+    .replace(/\bWed\b/g, 'Wednesday')
+    .replace(/\bThu\b/g, 'Thursday')
+    .replace(/\bFri\b/g, 'Friday')
+    .replace(/\bSat\b/g, 'Saturday')
+    .replace(/\bSun\b/g, 'Sunday')
+    // month abbreviations
+    .replace(/\bJan\b/g, 'January')
+    .replace(/\bFeb\b/g, 'February')
+    .replace(/\bMar\b/g, 'March')
+    .replace(/\bApr\b/g, 'April')
+    .replace(/\bAug\b/g, 'August')
+    .replace(/\bSep\b/g, 'September')
+    .replace(/\bOct\b/g, 'October')
+    .replace(/\bNov\b/g, 'November')
+    .replace(/\bDec\b/g, 'December')
+    // collapse extra whitespace/newlines
+    .replace(/\n{2,}/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
+}
+
+/* ─────────────────────────────────────────
    PROCESS REQUEST
 ───────────────────────────────────────── */
 async function processRequest(action, input) {
   try {
     const reply = await callClaude(input);
     addMsg('trinity', reply);
-    await speak(reply);
+    await speak(sanitizeForTTS(reply));
   } catch(e) {
     console.error('request', e);
     const msg = _matrixGlitch();
