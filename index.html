@@ -895,7 +895,7 @@ async function speak(text) {
     if (!res.ok) throw new Error('eleven');
     const url = URL.createObjectURL(await res.blob());
     _audio = new Audio(url);
-    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); setTimeout(() => { if (state==='idle' && hasVoice() && SR) startListening(); }, 700); };
+    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); };
     _audio.onerror = () => setState('idle');
     await _audio.play();
   } catch(e) {
@@ -1149,9 +1149,9 @@ boot();
     splash.remove();
   }
 
-  run().catch(exitSplash);
-  // Hard timeout fallback — if splash hasn't exited in 18s, force-remove it
-  setTimeout(exitSplash, 18000);
+  exitSplash(); // TESTING MODE — splash disabled; restore run().catch(exitSplash) when ready
+  // run().catch(exitSplash);
+  // setTimeout(exitSplash, 18000);
 })();
 </script>
 </body>
