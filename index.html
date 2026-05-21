@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TRINITY">
@@ -719,12 +720,22 @@
 
   <hr class="divider">
 
-  <div class="section-head">NEO BACKEND — MAKE.COM</div>
+  <div class="section-head">INTELLIGENCE — ANTHROPIC</div>
+
+  <div class="field">
+    <label>ANTHROPIC API KEY</label>
+    <input type="password" id="f-ak" placeholder="sk-ant-…" autocomplete="off">
+    <div class="field-hint">console.anthropic.com → API Keys → Create Key. Trinity uses this to call Claude directly — no Make.com rate limits.</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-head">INTEGRATIONS — MAKE.COM (future use)</div>
 
   <div class="field">
     <label>WEBHOOK URL</label>
     <input type="url" id="f-hook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
-    <div class="field-hint">From your Trinity Request Handler scenario in Make.com → Webhooks → Copy address.</div>
+    <div class="field-hint">Trinity Request Handler webhook — used for calendar and agentic actions. Optional for basic conversation.</div>
   </div>
 
   <div class="btn-row">
@@ -773,11 +784,18 @@
 /* ─────────────────────────────────────────
    CONFIG  (localStorage)
 ───────────────────────────────────────── */
-const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', lastDay: 'T_LAST_BRIEF_DAY' };
+const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', ak: 'T_ANTHROPIC_KEY', lastDay: 'T_LAST_BRIEF_DAY' };
 
-function cfg()     { return { key: localStorage.getItem(SK.key)||'', vid: localStorage.getItem(SK.vid)||'', hook: localStorage.getItem(SK.hook)||'' }; }
-function isReady()      { const c=cfg(); return !!(c.key && c.vid && c.hook); }
-function hasVoice()     { const c=cfg(); return !!(c.key && c.vid); }
+function cfg() {
+  return {
+    key:  localStorage.getItem(SK.key)  || '',   // ElevenLabs API key
+    vid:  localStorage.getItem(SK.vid)  || '',   // ElevenLabs Voice ID
+    hook: localStorage.getItem(SK.hook) || '',   // Make.com webhook (future integrations)
+    ak:   localStorage.getItem(SK.ak)   || '',   // Anthropic API key
+  };
+}
+function isReady()  { const c=cfg(); return !!(c.key && c.vid && c.ak); }
+function hasVoice() { const c=cfg(); return !!(c.key && c.vid); }
 
 /* ─────────────────────────────────────────
    MODAL
@@ -787,6 +805,7 @@ function openModal() {
   document.getElementById('f-key').value  = c.key;
   document.getElementById('f-vid').value  = c.vid;
   document.getElementById('f-hook').value = c.hook;
+  document.getElementById('f-ak').value   = c.ak;
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
@@ -795,6 +814,7 @@ function saveConfig() {
   localStorage.setItem(SK.key,  document.getElementById('f-key').value.trim());
   localStorage.setItem(SK.vid,  document.getElementById('f-vid').value.trim());
   localStorage.setItem(SK.hook, document.getElementById('f-hook').value.trim());
+  localStorage.setItem(SK.ak,   document.getElementById('f-ak').value.trim());
   toast('CONFIGURATION SAVED');
   closeModal();
   boot();
@@ -840,6 +860,119 @@ function addMsg(role, text) {
   d.innerHTML = `<div class="msg-label">${role==='trinity'?'TRINITY':'YOU'}</div><div class="msg-body">${text}</div>`;
   feed.appendChild(d);
   feed.scrollTop = feed.scrollHeight;
+}
+
+/* ─────────────────────────────────────────
+   TRINITY INTELLIGENCE — GLOBALS
+───────────────────────────────────────── */
+const TRINITY_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 when ready
+
+let _memory   = '';   // TRINITY_MEMORY.md from GitHub
+let _modIndex = '';   // TRINITY_MOD_INDEX.md from GitHub
+let _history  = [];   // conversation history (multi-turn within session)
+
+async function loadContextFiles() {
+  const base = 'https://raw.githubusercontent.com/bwoodall-btx/neo-trinity/main/';
+  const [mem, mod] = await Promise.allSettled([
+    fetch(base + 'TRINITY_MEMORY.md').then(r => r.ok ? r.text() : ''),
+    fetch(base + 'TRINITY_MOD_INDEX.md').then(r => r.ok ? r.text() : ''),
+  ]);
+  _memory   = mem.status === 'fulfilled'  ? mem.value  : '';
+  _modIndex = mod.status === 'fulfilled'  ? mod.value  : '';
+}
+
+function buildSystemPrompt() {
+  const now = new Date().toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
+
+  return `You are Trinity, the AI Executive Assistant for Project NEO — the Novel Enterprise Operator. You are the primary voice interface between Ben Woodall and the NEO agent network.
+
+IDENTITY & PERSONALITY
+- Name: Trinity (Matrix-themed; use occasional Matrix references naturally)
+- Voice-first interface: keep responses concise — 2 to 4 sentences unless depth is explicitly needed. Never use bullet points or lists in spoken responses; speak in full sentences.
+- Direct, warm, precise. No corporate jargon, no filler phrases ("Great question", "Absolutely", etc.)
+- You remember the full conversation within this session. Reference earlier context naturally.
+
+ABOUT BEN WOODALL
+- Title: General Manager, Pesca Holding | BTX Window Automation | Skyco Shading Systems
+- 20 years with BTX; has worked in every department (Manufacturing, Marketing, Accounting, Operations, Sales, R&D, Purchasing, Admin, Training, GM)
+- Based in Dallas, Texas — Central Time
+- Schedule constraints: unavailable Mon 9am–1pm CT and Wed 10am–1pm CT (company meetings); no meetings before 8:30am CT
+- Email: bwoodall@btxinc.com | bwoodall@pescaholding.com
+
+ABOUT THE COMPANIES
+Pesca Holding owns BTX Window Automation and Skyco Shading Systems — finished goods manufacturers and motor/control system manufacturers, in business since 1985.
+
+Industries: Commercial, multi-family, hospitality, residential, audio/visual, commercial integrator.
+
+Products — Interior: manual roller shades, motorized roller shades, motorized drapery, motorized roman systems, motorized vertical blinds. Exterior: motorized zipper screens (SKY 5Z/5ZS/5ZR/6ZS), cable screens (manual/motorized), skylight shades (SKY 5C), louvered roof systems (SKY Louver), retractable roofs (SKY Retractable). Control Systems: RF remotes, wall switches, wireless transmitters, motor relays, integration and bidirectional communication systems.
+
+Clients are businesses (dealers, contractors, designers, AV integrators, home builders) who identify projects, take final measurements, and submit specs. BTX/Skyco manufactures to specification.
+
+ERP: ePIC by PIC Business Systems (picbusiness.com) — manages orders, quotes, inventory, customers, production workflow.
+
+NEO AGENT NETWORK — Current Status (May 2026)
+Live: CSM Quote Follow-Up (sends monthly emails to 400+ customers via Make.com), Trinity (you), Chief Agent (CA), Operations Dashboard (Looker Studio — Page 1 live).
+Planned but not yet built: Marketing Manager, Business Development, Facilities, Engineering, Administrative, Human Resources, R&D, Purchasing, Inventory, Accounting, Operations Manager, Production, Business Strategy, Employee Knowledge Base.
+
+MASTER ORGANIZATIONAL DIRECTORY (MOD)
+Centralized file repository for all NEO agents. Google Drive: My Drive/Claude Projects/NEO/MOD/
+${_modIndex ? '\n' + _modIndex : 'MOD index not loaded — check TRINITY_MOD_INDEX.md in GitHub repo.'}
+
+CURRENT DATE & TIME (Central Time)
+${now}
+
+CALENDAR
+Calendar integration is planned but not yet connected. If Ben asks about his schedule, let him know calendar access is coming in a future build.
+
+PERSISTENT MEMORY
+${_memory ? _memory : 'No memory file loaded. Add notes to TRINITY_MEMORY.md in the neo-trinity GitHub repo to persist instructions, tasks, and context across sessions.'}
+
+RESPONSE GUIDELINES
+- For voice: be brief. Long answers should be offered as a summary first with detail available on request.
+- If Ben asks you to remember something, acknowledge it and remind him to add it to TRINITY_MEMORY.md in GitHub so it persists.
+- Reference MOD file paths when relevant so Ben knows where to find things.
+- If you are unsure about something, say so directly rather than speculating.
+- You have access to the MOD index above — use it to answer questions about where files and resources live.`;
+}
+
+/* ─────────────────────────────────────────
+   CLAUDE DIRECT CALL
+───────────────────────────────────────── */
+async function callClaude(userMessage) {
+  const c = cfg();
+  if (!c.ak) throw new Error('no-anthropic-key');
+
+  _history.push({ role: 'user', content: userMessage });
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': c.ak,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-calls': 'true',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: TRINITY_MODEL,
+      max_tokens: 1024,
+      system: buildSystemPrompt(),
+      messages: _history,
+    }),
+  });
+
+  if (!res.ok) {
+    _history.pop(); // remove failed user message so history stays clean
+    throw new Error('anthropic-' + res.status);
+  }
+
+  const data  = await res.json();
+  const reply = data.content[0].text;
+  _history.push({ role: 'assistant', content: reply });
+  return reply;
 }
 
 /* ─────────────────────────────────────────
@@ -967,13 +1100,14 @@ function orbTap() {
 ───────────────────────────────────────── */
 async function processRequest(action, input) {
   try {
-    const data  = await callBackend(action, input);
-    const reply = data.response || data.text || 'Request received.';
+    const reply = await callClaude(input);
     addMsg('trinity', reply);
     await speak(reply);
   } catch(e) {
     console.error('request', e);
-    addMsg('trinity', _matrixGlitch());
+    const msg = _matrixGlitch();
+    addMsg('trinity', msg);
+    await speak(msg);
     setState('idle');
   }
 }
@@ -1012,20 +1146,26 @@ function greeting() {
   return h<12 ? 'Good morning' : h<17 ? 'Good afternoon' : 'Good evening';
 }
 
-function boot() {
+async function boot() {
   const ready = isReady();
   document.getElementById('banner').classList.toggle('show', !ready);
   document.getElementById('init-text').textContent = ready
-    ? `${greeting()}, Ben.${briefingDue()?' Your morning briefing is loading…':' I\'m online and standing by.'}`
+    ? `${greeting()}, Ben. Loading context…`
     : `${greeting()}, Ben. Trinity is standing by. Tap CONFIG to enter your API keys and activate voice.`;
-  if (ready && briefingDue()) setTimeout(runBriefing, 1200);
 
-  // Pre-warm microphone permission on iOS — request access immediately so the
-  // permission dialog appears at launch rather than interrupting an orb tap
+  if (ready) {
+    // Load memory and MOD index in parallel before Trinity speaks
+    await loadContextFiles();
+    document.getElementById('init-text').textContent =
+      `${greeting()}, Ben.${briefingDue() ? ' Your morning briefing is loading…' : ' I\'m online and standing by.'}`;
+    if (briefingDue()) setTimeout(runBriefing, 800);
+  }
+
+  // Pre-warm microphone permission
   if (hasVoice() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => { stream.getTracks().forEach(t => t.stop()); })
-      .catch(() => {}); // silently ignore if denied — SpeechRecognition will handle it
+      .catch(() => {});
   }
 }
 
