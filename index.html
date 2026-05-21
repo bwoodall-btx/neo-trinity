@@ -853,7 +853,7 @@ async function callBackend(action, input) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, input: input||'', timestamp: new Date().toISOString(), timezone: 'America/Chicago' }),
   });
-  if (!res.ok) throw new Error('HTTP '+res.status);
+  if (!res.ok) return { response: 'I am having trouble reaching my backend right now. Please try again in a moment.' };
   const ct = res.headers.get('content-type')||'';
   return ct.includes('json') ? res.json() : res.text().then(t => ({ response: t }));
 }
