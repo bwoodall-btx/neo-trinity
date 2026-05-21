@@ -733,10 +733,16 @@
 
   <hr class="divider">
 
-  <div class="section-head">INTEGRATIONS — MAKE.COM (future use)</div>
+  <div class="section-head">INTEGRATIONS — MAKE.COM</div>
 
   <div class="field">
-    <label>WEBHOOK URL</label>
+    <label>MEMORY WRITER WEBHOOK</label>
+    <input type="url" id="f-memhook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
+    <div class="field-hint">NEO — Trinity Memory Writer webhook — Trinity uses this to save new memories to TRINITY_MEMORY.md in Google Drive.</div>
+  </div>
+
+  <div class="field">
+    <label>REQUEST HANDLER WEBHOOK</label>
     <input type="url" id="f-hook" placeholder="https://hook.us1.make.com/…" autocomplete="off">
     <div class="field-hint">Trinity Request Handler webhook — used for calendar and agentic actions. Optional for basic conversation.</div>
   </div>
@@ -787,14 +793,15 @@
 /* ─────────────────────────────────────────
    CONFIG  (localStorage)
 ───────────────────────────────────────── */
-const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', ak: 'T_ANTHROPIC_KEY', lastDay: 'T_LAST_BRIEF_DAY' };
+const SK = { key: 'T_ELEVEN_KEY', vid: 'T_VOICE_ID', hook: 'T_WEBHOOK', ak: 'T_ANTHROPIC_KEY', memhook: 'T_MEMORY_HOOK', lastDay: 'T_LAST_BRIEF_DAY' };
 
 function cfg() {
   return {
-    key:  localStorage.getItem(SK.key)  || '',   // ElevenLabs API key
-    vid:  localStorage.getItem(SK.vid)  || '',   // ElevenLabs Voice ID
-    hook: localStorage.getItem(SK.hook) || '',   // Make.com webhook (future integrations)
-    ak:   localStorage.getItem(SK.ak)   || '',   // Anthropic API key
+    key:     localStorage.getItem(SK.key)     || '',   // ElevenLabs API key
+    vid:     localStorage.getItem(SK.vid)     || '',   // ElevenLabs Voice ID
+    hook:    localStorage.getItem(SK.hook)    || '',   // Make.com webhook (calendar/agentic)
+    ak:      localStorage.getItem(SK.ak)      || '',   // Cloudflare proxy URL
+    memhook: localStorage.getItem(SK.memhook) || '',   // Make.com memory writer webhook
   };
 }
 function isReady()  { const c=cfg(); return !!(c.key && c.vid && c.ak); }
@@ -805,19 +812,21 @@ function hasVoice() { const c=cfg(); return !!(c.key && c.vid); }
 ───────────────────────────────────────── */
 function openModal() {
   const c = cfg();
-  document.getElementById('f-key').value  = c.key;
-  document.getElementById('f-vid').value  = c.vid;
-  document.getElementById('f-hook').value = c.hook;
-  document.getElementById('f-ak').value   = c.ak;
+  document.getElementById('f-key').value     = c.key;
+  document.getElementById('f-vid').value     = c.vid;
+  document.getElementById('f-hook').value    = c.hook;
+  document.getElementById('f-ak').value      = c.ak;
+  document.getElementById('f-memhook').value = c.memhook;
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
 
 function saveConfig() {
-  localStorage.setItem(SK.key,  document.getElementById('f-key').value.trim());
-  localStorage.setItem(SK.vid,  document.getElementById('f-vid').value.trim());
-  localStorage.setItem(SK.hook, document.getElementById('f-hook').value.trim());
-  localStorage.setItem(SK.ak,   document.getElementById('f-ak').value.trim());
+  localStorage.setItem(SK.key,     document.getElementById('f-key').value.trim());
+  localStorage.setItem(SK.vid,     document.getElementById('f-vid').value.trim());
+  localStorage.setItem(SK.hook,    document.getElementById('f-hook').value.trim());
+  localStorage.setItem(SK.ak,      document.getElementById('f-ak').value.trim());
+  localStorage.setItem(SK.memhook, document.getElementById('f-memhook').value.trim());
   toast('CONFIGURATION SAVED');
   closeModal();
   boot();
@@ -947,9 +956,14 @@ RESPONSE GUIDELINES
 - This is a voice interface. Respond in 1 to 3 sentences maximum unless Ben explicitly asks for more detail. If a topic needs more depth, summarize first and offer to elaborate.
 - Never use markdown formatting — no asterisks, no bold, no headers, no bullet points, no backticks. Speak in plain, natural sentences only.
 - Expand all abbreviations when speaking — say "Monday" not "Mon", "Wednesday" not "Wed", "January" not "Jan", and so on.
-- If Ben asks you to remember something, acknowledge it and remind him to add it to TRINITY_MEMORY.md in GitHub so it persists across sessions.
 - Reference MOD file paths when relevant so Ben knows where to find things.
-- If you are unsure about something, say so directly rather than speculating.`;
+- If you are unsure about something, say so directly rather than speculating.
+
+MEMORY SAVE PROTOCOL
+When Ben says "remember that", "save that", "note that", "add that to memory", or anything similar indicating he wants something retained across sessions, append a hidden tag at the very end of your response in this exact format:
+[SAVE: one concise sentence summarizing what to remember, written as a fact]
+Example: Ben says "Remember that the CSM run takes 42 minutes" → end your response with [SAVE: CSM monthly email run takes approximately 42 minutes for 423 customers as of May 2026]
+Rules: The tag must be at the very end. Never mention the tag in your spoken response. Keep your verbal reply natural and brief as always. Only include one [SAVE: ...] tag per response.`;
 }
 
 /* ─────────────────────────────────────────
@@ -1145,13 +1159,43 @@ function sanitizeForTTS(text) {
 }
 
 /* ─────────────────────────────────────────
+   MEMORY WRITE-BACK
+   Fires silently when Trinity includes a
+   [SAVE: ...] tag in her response.
+───────────────────────────────────────── */
+async function saveMemory(entry) {
+  const c = cfg();
+  if (!c.memhook) return;
+  try {
+    await fetch(c.memhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry }),
+    });
+    console.log('Memory saved:', entry);
+  } catch(e) {
+    console.warn('saveMemory failed:', e);
+  }
+}
+
+/* ─────────────────────────────────────────
    PROCESS REQUEST
 ───────────────────────────────────────── */
 async function processRequest(action, input) {
   try {
     const reply = await callClaude(input);
-    addMsg('trinity', reply);
-    await speak(sanitizeForTTS(reply));
+
+    // Detect and handle [SAVE: ...] memory tag
+    const saveMatch = reply.match(/\[SAVE:\s*([\s\S]+?)\]/);
+    if (saveMatch) {
+      saveMemory(saveMatch[1].trim()); // fire-and-forget
+    }
+
+    // Strip the tag from what Ben sees and hears
+    const cleanReply = reply.replace(/\s*\[SAVE:\s*[\s\S]+?\]/, '').trim();
+
+    addMsg('trinity', cleanReply);
+    await speak(sanitizeForTTS(cleanReply));
   } catch(e) {
     console.error('request', e);
     const msg = _matrixGlitch();
