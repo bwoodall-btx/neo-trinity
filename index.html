@@ -598,6 +598,89 @@
     }
     #splash-sub.show { opacity: 1; }
 
+    /* ── Auth Gate ── */
+    #auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #010A01;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      transition: opacity 0.6s ease;
+    }
+    #auth-gate.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #auth-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 6px;
+      color: rgba(0, 255, 65, 0.45);
+    }
+    #auth-lock {
+      font-size: 42px;
+      color: rgba(0, 255, 65, 0.25);
+      line-height: 1;
+    }
+    #auth-input {
+      -webkit-user-select: text;
+      user-select: text;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(0, 255, 65, 0.35);
+      color: #00FF41;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 16px;
+      letter-spacing: 4px;
+      text-align: center;
+      width: 240px;
+      padding: 10px 0;
+      outline: none;
+      caret-color: #00FF41;
+    }
+    #auth-input::placeholder {
+      color: rgba(0, 255, 65, 0.18);
+      letter-spacing: 2px;
+      font-size: 10px;
+    }
+    #auth-btn {
+      background: transparent;
+      border: 1px solid rgba(0, 255, 65, 0.3);
+      color: rgba(0, 255, 65, 0.6);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      padding: 11px 30px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #auth-btn:hover, #auth-btn:active {
+      border-color: rgba(0, 255, 65, 0.75);
+      color: #00FF41;
+    }
+    #auth-err {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: rgba(255, 80, 80, 0.85);
+      opacity: 0;
+      transition: opacity 0.3s;
+      min-height: 14px;
+    }
+    #auth-err.show { opacity: 1; }
+    @keyframes auth-shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-9px); }
+      40%       { transform: translateX(9px); }
+      60%       { transform: translateX(-6px); }
+      80%       { transform: translateX(6px); }
+    }
+    .auth-shake { animation: auth-shake 0.4s ease; }
+
     /* ── Toast ── */
     #toast {
       position: fixed;
@@ -621,6 +704,16 @@
   </style>
 </head>
 <body>
+
+<!-- Auth Gate -->
+<div id="auth-gate">
+  <div id="auth-title">SYSTEM ACCESS REQUIRED</div>
+  <div id="auth-lock">◈</div>
+  <input id="auth-input" type="password" placeholder="ENTER PASSPHRASE"
+         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <button id="auth-btn">INITIALIZE</button>
+  <div id="auth-err">ACCESS DENIED</div>
+</div>
 
 <!-- Matrix Rain -->
 <canvas id="rain"></canvas>
@@ -728,6 +821,56 @@
 <div id="toast"></div>
 
 <script>
+/* ─────────────────────────────────────────
+   AUTH GATE
+───────────────────────────────────────── */
+(function () {
+  const HASH  = '5964bfc9eb7cdb153295175c0d45622ba8916dcf21f8e4a543730c17e7b0fa1a';
+  const gate  = document.getElementById('auth-gate');
+  const input = document.getElementById('auth-input');
+  const btn   = document.getElementById('auth-btn');
+  const err   = document.getElementById('auth-err');
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function unlock() {
+    gate.classList.add('fade-out');
+    setTimeout(() => gate.remove(), 700);
+  }
+
+  // Already authenticated this session — skip gate
+  if (sessionStorage.getItem('trinity_auth') === '1') {
+    unlock();
+    return;
+  }
+
+  // Show gate and focus input after fonts load
+  setTimeout(() => input.focus(), 400);
+
+  async function attempt() {
+    const hash = await sha256(input.value);
+    if (hash === HASH) {
+      sessionStorage.setItem('trinity_auth', '1');
+      unlock();
+    } else {
+      err.classList.add('show');
+      input.classList.add('auth-shake');
+      input.value = '';
+      setTimeout(() => {
+        input.classList.remove('auth-shake');
+        err.classList.remove('show');
+        input.focus();
+      }, 1600);
+    }
+  }
+
+  btn.addEventListener('click', attempt);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+})();
+
 /* ─────────────────────────────────────────
    MATRIX RAIN — state-aware
    idle:       slow, dim    (65ms, 0.10)
