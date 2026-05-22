@@ -1244,17 +1244,39 @@ const TRINITY_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 
 
 let _memory   = '';   // TRINITY_MEMORY.md — loaded from Google Drive via proxy
 let _modIndex = '';   // TRINITY_MOD_INDEX.md — loaded from Google Drive via proxy
+let _calendar = '';   // today's calendar events — loaded from Google Apps Script via proxy
 let _history  = [];   // conversation history (multi-turn within session)
+
+function formatCalendar(data) {
+  if (!data || !data.events || data.events.length === 0) {
+    return 'No events scheduled for today.';
+  }
+  return data.events.map(ev => {
+    if (ev.allDay) return `• ${ev.title} (all day)`;
+    const fmt = (iso) => new Date(iso).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago',
+    });
+    const loc = ev.location ? ` @ ${ev.location}` : '';
+    return `• ${ev.title} — ${fmt(ev.start)} to ${fmt(ev.end)}${loc}`;
+  }).join('\n');
+}
 
 async function loadContextFiles() {
   const c = cfg();
   if (!c.ak) return; // no proxy URL configured yet
   try {
-    const res = await fetch(c.ak + '/context');
-    if (res.ok) {
-      const data = await res.json();
+    const [ctxRes, calRes] = await Promise.all([
+      fetch(c.ak + '/context'),
+      fetch(c.ak + '/calendar'),
+    ]);
+    if (ctxRes.ok) {
+      const data = await ctxRes.json();
       _memory   = data.memory   || '';
       _modIndex = data.modIndex || '';
+    }
+    if (calRes.ok) {
+      const calData = await calRes.json();
+      _calendar = formatCalendar(calData);
     }
   } catch (e) {
     console.warn('loadContextFiles failed:', e);
@@ -1309,8 +1331,8 @@ ${_modIndex ? '\n' + _modIndex : 'MOD index not loaded — file may not be publi
 CURRENT DATE & TIME (Central Time)
 ${now}
 
-CALENDAR
-Calendar integration is planned but not yet connected. If Ben asks about his schedule, let him know calendar access is coming in a future build.
+TODAY'S CALENDAR (Central Time)
+${_calendar || 'No calendar data loaded — calendar integration may still be initializing.'}
 
 PERSISTENT MEMORY
 ${_memory ? _memory : 'No memory file loaded — TRINITY_MEMORY.md may not be publicly shared in Google Drive yet.'}
