@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -701,6 +701,183 @@
     }
     #toast.show { opacity: 1; }
 
+    /* ── Header right group ── */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Theme Toggle Button ── */
+    #theme-btn {
+      background: none;
+      border: 1px solid rgba(0, 255, 65, 0.3);
+      color: rgba(0, 255, 65, 0.5);
+      font-family: inherit;
+      font-size: 14px;
+      padding: 6px 10px;
+      cursor: pointer;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+    #theme-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* ─────────────────────────────────────────
+       LIGHT MODE
+       Vision: matrix-inspired sci-fi precision —
+       clean, crisp, authoritative. Deep emerald
+       on off-white. Minimal shadow. Maximum legibility.
+    ───────────────────────────────────────── */
+
+    /* Smooth cross-theme transition */
+    html { transition: background-color 0.35s ease; }
+    *, *::before, *::after { transition-property: background-color, color, border-color, box-shadow, opacity; transition-duration: 0.3s; transition-timing-function: ease; }
+    /* Reset transition on animated elements so we don't slow them down */
+    #orb, .wbar, #spin, #rain, .pulse-dot, .splash-ch,
+    #splash-neo, #splash-trinity-label, #splash-sub,
+    #auth-gate, .msg { transition: none; }
+    .msg-body, .field input, .field label, .field-hint,
+    .logo, #orb-label, #modal, header, .modal-close,
+    .btn-primary, .btn-secondary, .section-head, .divider,
+    #theme-btn, #cfg-btn, #toast { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
+
+    [data-theme="light"] {
+      --green:       #0A6B2A;
+      --green-dim:   #1A7A38;
+      --green-mid:   #4A9460;
+      --green-dark:  #E6F2EA;
+      --green-glow:  rgba(10, 107, 42, 0.18);
+      --bg:          #F3F7F4;
+      --surface:     rgba(255, 255, 255, 0.96);
+      --text:        #0D1F0D;
+      --text-dim:    #5A8068;
+      --amber:       rgba(170, 80, 0, 0.95);
+    }
+
+    [data-theme="light"] body {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    [data-theme="light"] #rain {
+      opacity: 0.05 !important;
+    }
+
+    [data-theme="light"] header {
+      border-bottom: 1px solid rgba(10, 107, 42, 0.14);
+      background: rgba(243, 247, 244, 0.97);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    [data-theme="light"] .logo { color: #3A7A52; }
+
+    [data-theme="light"] #cfg-btn {
+      border-color: rgba(10, 107, 42, 0.38);
+      box-shadow: 0 0 6px rgba(10, 107, 42, 0.06);
+    }
+    [data-theme="light"] #cfg-btn:hover {
+      box-shadow: 0 0 10px rgba(10, 107, 42, 0.18);
+    }
+
+    [data-theme="light"] #theme-btn {
+      border-color: rgba(10, 107, 42, 0.28);
+      color: rgba(10, 107, 42, 0.55);
+    }
+    [data-theme="light"] #theme-btn:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    [data-theme="light"] #banner {
+      background: rgba(255, 248, 235, 0.96);
+      border-bottom-color: rgba(170, 80, 0, 0.22);
+    }
+
+    /* Messages */
+    [data-theme="light"] .msg.trinity .msg-body {
+      background: rgba(255, 255, 255, 0.94);
+      border-left: 2px solid var(--green-mid);
+      color: var(--text);
+      box-shadow: 0 1px 8px rgba(10, 107, 42, 0.07), 0 0 0 1px rgba(10,107,42,0.05);
+    }
+    [data-theme="light"] .msg.user .msg-body {
+      background: rgba(226, 242, 231, 0.82);
+      border-right: 2px solid var(--text-dim);
+      color: var(--text);
+    }
+
+    /* Orb — light mode idle animation */
+    @keyframes orb-idle-light {
+      0%, 100% { box-shadow: 0 0 18px rgba(10,107,42,0.18), 0 0 40px rgba(10,107,42,0.05), inset 0 0 14px rgba(10,107,42,0.04); }
+      50%       { box-shadow: 0 0 28px rgba(10,107,42,0.28), 0 0 60px rgba(10,107,42,0.10), inset 0 0 22px rgba(10,107,42,0.06); }
+    }
+    @keyframes orb-listen-light {
+      0%, 100% { box-shadow: 0 0 20px rgba(10,107,42,0.35), 0 0 48px rgba(10,107,42,0.12); }
+      50%       { box-shadow: 0 0 34px rgba(10,107,42,0.55), 0 0 70px rgba(10,107,42,0.20); }
+    }
+    @keyframes orb-speak-light {
+      0%, 100% { box-shadow: 0 0 24px rgba(10,107,42,0.50), 0 0 52px rgba(10,107,42,0.18); }
+      50%       { box-shadow: 0 0 38px rgba(10,107,42,0.70), 0 0 80px rgba(10,107,42,0.28); }
+    }
+
+    [data-theme="light"] #orb {
+      background: radial-gradient(circle at 38% 35%, rgba(10,107,42,0.12), rgba(210,235,215,0.06));
+      animation: orb-idle-light 3.2s ease-in-out infinite;
+    }
+    [data-theme="light"] .s-listening #orb {
+      animation: orb-listen-light 0.55s ease-in-out infinite;
+      border-color: var(--green);
+    }
+    [data-theme="light"] .s-speaking #orb {
+      animation: orb-speak-light 0.28s ease-in-out infinite;
+    }
+    [data-theme="light"] #spin {
+      border-top-color: var(--green);
+      border-right-color: rgba(10, 107, 42, 0.2);
+    }
+    [data-theme="light"] #orb-label { color: #3A7A52; }
+
+    /* Modal */
+    [data-theme="light"] #modal {
+      background: rgba(247, 252, 249, 0.99);
+    }
+    [data-theme="light"] .modal-close {
+      color: var(--green-mid);
+      border-color: rgba(10, 107, 42, 0.28);
+    }
+    [data-theme="light"] .modal-close:hover { color: var(--green); border-color: var(--green); }
+    [data-theme="light"] .section-head { border-bottom-color: rgba(10, 107, 42, 0.14); }
+    [data-theme="light"] .field label { color: var(--green-dim); }
+    [data-theme="light"] .field input {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(10, 107, 42, 0.22);
+      color: var(--text);
+    }
+    [data-theme="light"] .field input::placeholder { color: rgba(10, 107, 42, 0.28); }
+    [data-theme="light"] .field input:focus {
+      border-color: var(--green);
+      background: #ffffff;
+    }
+    [data-theme="light"] .field-hint { color: var(--text-dim); }
+    [data-theme="light"] .btn-primary {
+      background: rgba(10, 107, 42, 0.88);
+      border-color: var(--green);
+      color: #ffffff;
+    }
+    [data-theme="light"] .btn-primary:hover { background: rgba(10, 107, 42, 1); }
+    [data-theme="light"] .btn-secondary {
+      color: var(--green-mid);
+      border-color: rgba(10, 107, 42, 0.28);
+    }
+    [data-theme="light"] .btn-secondary:hover { color: var(--green); border-color: var(--green-dim); }
+    [data-theme="light"] .divider { border-top-color: rgba(10, 107, 42, 0.12); }
+    [data-theme="light"] #toast {
+      background: rgba(247, 252, 249, 0.97);
+      border-color: var(--green-mid);
+      color: var(--text);
+    }
+
   </style>
 </head>
 <body>
@@ -740,7 +917,10 @@
       <span class="logo">NEO / <strong>TRINITY</strong></span>
       <div class="pulse-dot"></div>
     </div>
-    <button id="cfg-btn" onclick="openModal()">⚙ CONFIG</button>
+    <div class="header-right">
+      <button id="theme-btn" onclick="toggleTheme()" title="Toggle display mode">◐</button>
+      <button id="cfg-btn" onclick="openModal()">⚙ CONFIG</button>
+    </div>
   </header>
 
   <div id="banner">⚠ API KEYS REQUIRED — TAP CONFIG TO ACTIVATE</div>
@@ -872,6 +1052,56 @@
 })();
 
 /* ─────────────────────────────────────────
+   THEME
+───────────────────────────────────────── */
+(function () {
+  const saved = localStorage.getItem('trinity_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  // Button label set after DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '◐' : '◑';
+  });
+})();
+
+function toggleTheme() {
+  const html  = document.documentElement;
+  const cur   = html.getAttribute('data-theme') || 'dark';
+  const next  = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('trinity_theme', next);
+  document.getElementById('theme-btn').textContent = next === 'dark' ? '◐' : '◑';
+  // Re-apply rain for current app state with new theme params
+  applyRain(state || 'idle', next);
+}
+
+/* Rain params per state per theme */
+function getRainParams(s, theme) {
+  if (theme === 'light') {
+    const fade = 'rgba(243,247,244,0.07)';
+    switch (s) {
+      case 'speaking':   return [22,  '0.09', fade, '#0A6B2A'];
+      case 'processing': return [42,  '0.06', fade, '#1A7A38'];
+      case 'listening':  return [42,  '0.06', fade, '#1A7A38'];
+      default:           return [65,  '0.04', fade, '#0A6B2A'];
+    }
+  } else {
+    switch (s) {
+      case 'speaking':   return [22,  '0.32', 'rgba(1,10,1,0.025)', '#00FF41'];
+      case 'processing': return [42,  '0.18', 'rgba(1,10,1,0.045)', '#00CC33'];
+      case 'listening':  return [42,  '0.16', 'rgba(1,10,1,0.048)', '#00CC33'];
+      default:           return [65,  '0.10', 'rgba(1,10,1,0.055)', '#00FF41'];
+    }
+  }
+}
+
+function applyRain(s, theme) {
+  const t = theme || document.documentElement.getAttribute('data-theme') || 'dark';
+  const [speed, opacity, fade, color] = getRainParams(s, t);
+  _rain.setRainState(speed, opacity, fade, color);
+}
+
+/* ─────────────────────────────────────────
    MATRIX RAIN — state-aware
    idle:       slow, dim    (65ms, 0.10)
    listening:  medium, dim  (42ms, 0.16)
@@ -991,17 +1221,8 @@ function setState(s) {
     case 'processing': lbl.textContent='PROCESSING…';      icon.textContent='◉'; break;
     case 'speaking':   lbl.textContent='TRINITY SPEAKING'; icon.textContent='◎'; break;
   }
-  // Rain animation responds to state
-  switch (s) {
-    case 'speaking':
-      _rain.setRainState(22,  '0.32', 'rgba(1,10,1,0.025)', '#00FF41'); break;
-    case 'processing':
-      _rain.setRainState(42,  '0.18', 'rgba(1,10,1,0.045)', '#00CC33'); break;
-    case 'listening':
-      _rain.setRainState(42,  '0.16', 'rgba(1,10,1,0.048)', '#00CC33'); break;
-    default:
-      _rain.setRainState(65,  '0.10', 'rgba(1,10,1,0.055)', '#00FF41'); break;
-  }
+  // Rain animation responds to state + current theme
+  applyRain(s);
 }
 
 /* ─────────────────────────────────────────
