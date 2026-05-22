@@ -1256,8 +1256,7 @@ function formatCalendar(data) {
     const fmt = (iso) => new Date(iso).toLocaleTimeString('en-US', {
       hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago',
     });
-    const loc = ev.location ? ` @ ${ev.location}` : '';
-    return `• ${ev.title} — ${fmt(ev.start)} to ${fmt(ev.end)}${loc}`;
+    return `• ${ev.title} — ${fmt(ev.start)} to ${fmt(ev.end)}`;
   }).join('\n');
 }
 
