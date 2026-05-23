@@ -1240,7 +1240,7 @@ function addMsg(role, text) {
 /* ─────────────────────────────────────────
    TRINITY INTELLIGENCE — GLOBALS
 ───────────────────────────────────────── */
-const TRINITY_MODEL = 'claude-sonnet-4-6'; // sonnet required for reliable tool use
+const TRINITY_MODEL = 'claude-haiku-4-5-20251001'; // haiku: higher rate limits, tool use fully supported
 
 /* ─────────────────────────────────────────
    CALENDAR TOOLS — passed to Anthropic API
@@ -1498,17 +1498,24 @@ async function callClaude(userMessage) {
   while (rounds < MAX_TOOL_ROUNDS) {
     rounds++;
 
-    const res = await fetch(c.ak, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model:    TRINITY_MODEL,
-        max_tokens: 1024,
-        system:   buildSystemPrompt(),
-        messages: _history,
-        tools:    CALENDAR_TOOLS,
-      }),
-    });
+    // Fetch with 429 retry (exponential backoff — up to 3 attempts per round)
+    let res;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(c.ak, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model:      TRINITY_MODEL,
+          max_tokens: 1024,
+          system:     buildSystemPrompt(),
+          messages:   _history,
+          tools:      CALENDAR_TOOLS,
+        }),
+      });
+      if (res.status !== 429) break;
+      // Rate limited — wait before retrying (2s, 4s)
+      await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+    }
 
     if (!res.ok) {
       // Only pop user message if this is the first round (nothing extra was added yet)
