@@ -1240,7 +1240,100 @@ function addMsg(role, text) {
 /* ─────────────────────────────────────────
    TRINITY INTELLIGENCE — GLOBALS
 ───────────────────────────────────────── */
-const TRINITY_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 when ready
+const TRINITY_MODEL = 'claude-sonnet-4-6'; // sonnet required for reliable tool use
+
+/* ─────────────────────────────────────────
+   CALENDAR TOOLS — passed to Anthropic API
+   Enables Trinity to read/write calendar
+   events live during conversation.
+───────────────────────────────────────── */
+const CALENDAR_TOOLS = [
+  {
+    name: 'read_calendar',
+    description: 'Read calendar events for a specific date range. Use when Ben asks about his schedule for dates beyond the 7-day window already in the system prompt, or any specific date range.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        start_date: { type: 'string', description: 'Start date YYYY-MM-DD (Central Time)' },
+        end_date:   { type: 'string', description: 'End date YYYY-MM-DD (Central Time)' },
+      },
+      required: ['start_date', 'end_date'],
+    },
+  },
+  {
+    name: 'create_event',
+    description: "Create a new calendar event on Ben's calendar (bwoodall@pescaholding.com). Always confirm the title, date, and time with Ben before calling this tool.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        title:       { type: 'string',  description: 'Event title' },
+        start:       { type: 'string',  description: 'Start datetime ISO 8601 with CT offset, e.g. 2026-05-23T14:00:00-05:00' },
+        end:         { type: 'string',  description: 'End datetime ISO 8601 with CT offset' },
+        description: { type: 'string',  description: 'Optional notes or description' },
+        all_day:     { type: 'boolean', description: 'True for all-day events' },
+      },
+      required: ['title', 'start', 'end'],
+    },
+  },
+  {
+    name: 'update_event',
+    description: 'Update an existing calendar event. Requires event_id from a prior read_calendar call. Confirm changes with Ben before executing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id:    { type: 'string', description: 'Event ID from read_calendar result' },
+        title:       { type: 'string', description: 'New title (omit to keep existing)' },
+        start:       { type: 'string', description: 'New start ISO 8601 CT (omit to keep existing)' },
+        end:         { type: 'string', description: 'New end ISO 8601 CT (omit to keep existing)' },
+        description: { type: 'string', description: 'New description (omit to keep existing)' },
+      },
+      required: ['event_id'],
+    },
+  },
+  {
+    name: 'delete_event',
+    description: 'Delete a calendar event permanently. Requires event_id from read_calendar. Always confirm with Ben before deleting — cannot be undone.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'Event ID from read_calendar result' },
+      },
+      required: ['event_id'],
+    },
+  },
+];
+
+/* ─────────────────────────────────────────
+   EXECUTE CALENDAR TOOL
+   Fired by callClaude() when Anthropic
+   returns stop_reason: 'tool_use'.
+───────────────────────────────────────── */
+async function executeCalendarTool(toolName, toolInput) {
+  const c = cfg();
+  try {
+    if (toolName === 'read_calendar') {
+      const res = await fetch(
+        `${c.ak}/calendar?start=${encodeURIComponent(toolInput.start_date)}&end=${encodeURIComponent(toolInput.end_date)}`
+      );
+      if (!res.ok) return { error: 'Calendar read failed: ' + res.status };
+      const data = await res.json();
+      // Return raw events (IDs preserved for follow-up tools) + human-readable summary
+      return { events: data.events || [], summary: formatCalendar(data) };
+    }
+    if (toolName === 'create_event' || toolName === 'update_event' || toolName === 'delete_event') {
+      const res = await fetch(c.ak + '/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: toolName, ...toolInput }),
+      });
+      if (!res.ok) return { ok: false, error: 'Calendar write failed: ' + res.status };
+      return await res.json();
+    }
+    return { error: 'Unknown tool: ' + toolName };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
 
 let _memory   = '';   // TRINITY_MEMORY.md — loaded from Google Drive via proxy
 let _modIndex = '';   // TRINITY_MOD_INDEX.md — loaded from Google Drive via proxy
@@ -1358,6 +1451,14 @@ ${now}
 TODAY'S CALENDAR (Central Time)
 ${_calendar || 'No calendar data loaded — calendar integration may still be initializing.'}
 
+CALENDAR TOOLS — LIVE READ/WRITE
+You have four calendar tools available: read_calendar, create_event, update_event, delete_event.
+- read_calendar: Use when Ben asks about dates beyond the 7-day window above, or requests a specific date range. Always use this before update_event or delete_event so you have the correct event_id.
+- create_event: Creates on bwoodall@pescaholding.com. Always confirm title, date, start time, and end time with Ben before calling. Use ISO 8601 with CT offset (e.g. 2026-05-23T14:00:00-05:00). CDT offset is -05:00, CST is -06:00.
+- update_event: Requires event_id. Confirm changes before executing. If you don't have the event_id, call read_calendar first.
+- delete_event: Requires event_id. Always confirm with Ben — this is permanent.
+When Ben says "schedule", "add to my calendar", "move that meeting", "cancel", or similar — use the appropriate tool. Confirm details before any write operation.
+
 PERSISTENT MEMORY
 ${_memory ? _memory : 'No memory file loaded — TRINITY_MEMORY.md may not be publicly shared in Google Drive yet.'}
 
@@ -1376,7 +1477,11 @@ Rules: The tag must be at the very end. Never mention the tag in your spoken res
 }
 
 /* ─────────────────────────────────────────
-   CLAUDE DIRECT CALL
+   CLAUDE CALL — with tool use loop
+   Handles calendar tool calls transparently:
+   Claude requests a tool → we execute it →
+   return result → Claude gives final reply.
+   Max 5 tool rounds per user message.
 ───────────────────────────────────────── */
 async function callClaude(userMessage) {
   const c = cfg();
@@ -1384,26 +1489,64 @@ async function callClaude(userMessage) {
 
   _history.push({ role: 'user', content: userMessage });
 
-  const res = await fetch(c.ak, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: TRINITY_MODEL,
-      max_tokens: 1024,
-      system: buildSystemPrompt(),
-      messages: _history,
-    }),
-  });
+  const MAX_TOOL_ROUNDS = 5;
+  let rounds = 0;
 
-  if (!res.ok) {
-    _history.pop(); // remove failed user message so history stays clean
-    throw new Error('anthropic-' + res.status);
+  while (rounds < MAX_TOOL_ROUNDS) {
+    rounds++;
+
+    const res = await fetch(c.ak, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:    TRINITY_MODEL,
+        max_tokens: 1024,
+        system:   buildSystemPrompt(),
+        messages: _history,
+        tools:    CALENDAR_TOOLS,
+      }),
+    });
+
+    if (!res.ok) {
+      // Only pop user message if this is the first round (nothing extra was added yet)
+      if (rounds === 1) _history.pop();
+      throw new Error('anthropic-' + res.status);
+    }
+
+    const data = await res.json();
+
+    // ── Claude wants to use a tool ──────────────────────────────────────────
+    if (data.stop_reason === 'tool_use') {
+      // Push full content block array (required by Anthropic for tool use turns)
+      _history.push({ role: 'assistant', content: data.content });
+
+      // Execute each tool call and collect results
+      const toolResults = [];
+      for (const block of data.content) {
+        if (block.type !== 'tool_use') continue;
+        console.log('[Trinity] Tool call:', block.name, block.input);
+        const result = await executeCalendarTool(block.name, block.input);
+        console.log('[Trinity] Tool result:', result);
+        toolResults.push({
+          type:        'tool_result',
+          tool_use_id: block.id,
+          content:     JSON.stringify(result),
+        });
+      }
+
+      // Push tool results and loop back for Claude's next response
+      _history.push({ role: 'user', content: toolResults });
+      continue;
+    }
+
+    // ── Normal text response — done ─────────────────────────────────────────
+    const textBlock = data.content.find(b => b.type === 'text');
+    const reply = textBlock ? textBlock.text : '';
+    _history.push({ role: 'assistant', content: reply });
+    return reply;
   }
 
-  const data  = await res.json();
-  const reply = data.content[0].text;
-  _history.push({ role: 'assistant', content: reply });
-  return reply;
+  throw new Error('tool-loop-exceeded');
 }
 
 /* ─────────────────────────────────────────
