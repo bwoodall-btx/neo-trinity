@@ -1313,7 +1313,7 @@ async function executeCalendarTool(toolName, toolInput) {
   try {
     if (toolName === 'read_calendar') {
       // Use POST to avoid query param loss during Google Apps Script redirect
-      const res = await fetch(c.ak + '/calendar', {
+      const res = await fetch(c.ak + '/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'read_calendar', start_date: toolInput.start_date, end_date: toolInput.end_date }),
@@ -1324,7 +1324,7 @@ async function executeCalendarTool(toolName, toolInput) {
       return { events: data.events || [], summary: formatCalendar(data) };
     }
     if (toolName === 'create_event' || toolName === 'update_event' || toolName === 'delete_event') {
-      const res = await fetch(c.ak + '/calendar', {
+      const res = await fetch(c.ak + '/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: toolName, ...toolInput }),
@@ -1387,7 +1387,7 @@ async function loadContextFiles() {
   try {
     const [ctxRes, calRes] = await Promise.all([
       fetch(c.ak + '/context'),
-      fetch(c.ak + '/calendar'),
+      fetch(c.ak + '/memory'),
     ]);
     if (ctxRes.ok) {
       const data = await ctxRes.json();
