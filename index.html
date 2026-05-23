@@ -1462,6 +1462,14 @@ You have four calendar tools available: read_calendar, create_event, update_even
 - delete_event: Requires event_id. Always confirm with Ben — this is permanent.
 When Ben says "schedule", "add to my calendar", "move that meeting", "cancel", or similar — use the appropriate tool. Confirm details before any write operation.
 
+CALENDAR DATE VALIDATION — MANDATORY:
+Before calling create_event or update_event, you must validate and confirm the date using this exact process:
+1. Calculate the exact calendar date from the current date shown above. Example: if today is Saturday May 23 and Ben says "next Monday", count forward to get Monday May 26. Never guess — derive it from the current date.
+2. Verify the day name and numeric date are consistent. If "next Monday" resolves to the 26th, confirm it as "Monday, May 26" — not just "Monday" or just "the 26th."
+3. Always state your confirmation in the format: "[Day], [Month] [Date] at [Time]" (e.g., "Monday, May 26 at 3:00 PM"). This makes any mismatch immediately visible to Ben before the event is created.
+4. Only call the tool AFTER Ben verbally confirms the full day-date-time combination.
+5. Use the numeric date (not the day name) when building the ISO 8601 datetime string for the tool call.
+
 PERSISTENT MEMORY
 ${_memory ? _memory : 'No memory file loaded — TRINITY_MEMORY.md may not be publicly shared in Google Drive yet.'}
 
