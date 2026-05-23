@@ -1312,9 +1312,12 @@ async function executeCalendarTool(toolName, toolInput) {
   const c = cfg();
   try {
     if (toolName === 'read_calendar') {
-      const res = await fetch(
-        `${c.ak}/calendar?start=${encodeURIComponent(toolInput.start_date)}&end=${encodeURIComponent(toolInput.end_date)}`
-      );
+      // Use POST to avoid query param loss during Google Apps Script redirect
+      const res = await fetch(c.ak + '/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'read_calendar', start_date: toolInput.start_date, end_date: toolInput.end_date }),
+      });
       if (!res.ok) return { error: 'Calendar read failed: ' + res.status };
       const data = await res.json();
       // Return raw events (IDs preserved for follow-up tools) + human-readable summary
