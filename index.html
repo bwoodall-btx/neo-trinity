@@ -1676,17 +1676,27 @@ async function testVoice() {
 ───────────────────────────────────────── */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let _rec = null;
+let _listenTimer = null;
+const LISTEN_TIMEOUT_MS = 10000; // auto-stop after 10s if no result (prevents background noise holding mic open)
 
 function startListening() {
   if (!hasVoice()) { openModal(); return; }
   if (state==='speaking'||state==='processing') return;
   if (!SR) { toast('SPEECH NOT AVAILABLE IN THIS BROWSER'); return; }
   _rec = new SR();
-  _rec.lang='en-US'; _rec.interimResults=false; _rec.maxAlternatives=1;
-  _rec.onstart  = () => setState('listening');
-  _rec.onerror  = e => { setState('idle'); if(e.error==='not-allowed') toast('MICROPHONE PERMISSION REQUIRED'); };
-  _rec.onend    = () => { if(state==='listening') setState('idle'); };
+  _rec.lang='en-US'; _rec.interimResults=false; _rec.maxAlternatives=1; _rec.continuous=false;
+  _rec.onstart  = () => {
+    setState('listening');
+    _listenTimer = setTimeout(() => stopListening(), LISTEN_TIMEOUT_MS);
+  };
+  _rec.onerror  = e => {
+    clearTimeout(_listenTimer);
+    setState('idle');
+    if(e.error==='not-allowed') toast('MICROPHONE PERMISSION REQUIRED');
+  };
+  _rec.onend    = () => { clearTimeout(_listenTimer); if(state==='listening') setState('idle'); };
   _rec.onresult = async e => {
+    clearTimeout(_listenTimer);
     const tx = e.results[0][0].transcript;
     addMsg('user', tx);
     setState('processing');
@@ -1695,7 +1705,7 @@ function startListening() {
   _rec.start();
 }
 
-function stopListening() { if(_rec){_rec.stop();_rec=null;} }
+function stopListening() { clearTimeout(_listenTimer); if(_rec){_rec.stop();_rec=null;} }
 
 /* ─────────────────────────────────────────
    ORB
