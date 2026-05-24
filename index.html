@@ -2056,6 +2056,45 @@ boot();
     });
   }
 
+  // ── Splash audio helpers ────────────────────────────────────────────────────
+  // Pre-fetch and decode a TTS clip into an AudioBuffer so it's ready to play
+  // at a precise moment without any network delay at playback time.
+  async function fetchSplashAudio(text) {
+    const c = cfg();
+    if (!c.key || !c.vid) return null;
+    try {
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${c.vid}`, {
+        method: 'POST',
+        headers: { 'xi-api-key': c.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: { stability: 0.50, similarity_boost: 0.80, style: 0.30, use_speaker_boost: true },
+        }),
+      });
+      if (!res.ok) return null;
+      const arrayBuffer = await res.arrayBuffer();
+      const ctx = getAudioCtx();
+      return await new Promise((resolve, reject) => ctx.decodeAudioData(arrayBuffer, resolve, reject));
+    } catch(e) { console.error('fetchSplashAudio:', e); return null; }
+  }
+
+  // Play a pre-decoded AudioBuffer and resolve when it finishes.
+  // Does NOT go through the main speak() state machine — keeps splash
+  // audio independent from the orb state.
+  function playSplashBuffer(buf) {
+    return new Promise(resolve => {
+      if (!buf) { resolve(); return; }
+      const ctx = getAudioCtx();
+      if (ctx.state !== 'running') ctx.resume();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.onended = resolve;
+      src.start(0);
+    });
+  }
+
   async function run() {
     // ── Gate: wait for user tap to unlock iOS audio ──
     await new Promise(resolve => {
@@ -2066,45 +2105,56 @@ boot();
       }, { once: true });
     });
 
-    // ── Voice fires immediately after tap (audio now unlocked) ──
-    if (hasVoice()) {
-      const welcome = "Welcome to the Novel Enterprise Operator — Neo. I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
-      addMsg('trinity', welcome);
-      speak(welcome);
-    }
-
     // Phase 1 — typewriter left to right
+    // Pre-fetch both audio clips in parallel during typing so there is zero
+    // network latency at the moment we need to play them.
     const spans = buildSpans();
     fullEl.style.opacity = '1';
     await delay(400);
+
+    const audioPrefetch = hasVoice()
+      ? Promise.all([
+          fetchSplashAudio('Welcome to the Novel Enterprise Operator'),
+          fetchSplashAudio('Neo.'),
+        ])
+      : Promise.resolve([null, null]);
+
     await typeIn(spans);
 
     // Hold the full title — dramatic pause before collapsing to NEO
     await delay(2400);
 
-    // Phase 2 — collapse non-N/E/O letters leftward
-    await collapseToNEO(spans);
+    // Both clips should be decoded and ready well before this point
+    const [bufIntro, bufNeo] = await audioPrefetch;
 
-    // Let the collapse animation settle, then hold NEO
-    await delay(600);
+    // Phase 2 — Play "Welcome to the Novel Enterprise Operator."
+    // The instant this audio ends, trigger the collapse.
+    // "Neo." fires immediately after — perfectly synchronized.
+    await playSplashBuffer(bufIntro);
 
-    // Hold N  E  O
-    await delay(2200);
+    collapseToNEO(spans);            // collapse starts the frame audio ends
+    await delay(80);                 // one beat so the visual registers
+    await playSplashBuffer(bufNeo);  // "Neo." plays as letters collapse inward
 
-    // Phase 3 — TRINITY appears directly (large NEO removed)
+    // Hold NEO on screen after the word lands
+    await delay(1400);
+
+    // Phase 3 — TRINITY appears
     fullEl.style.opacity = '0';
     await delay(300);
+    const welcomeRest = "I'm Trinity, your executive assistant. I have access to your schedule, your communications, and the full agent network. Tap the orb when you're ready, and we'll get to work.";
+    addMsg('trinity', welcomeRest);
     trinityEl.classList.add('show');
     subEl.classList.add('show');
     await delay(1700);
 
-    // Phase 5 — exit splash
+    // Exit splash
     trinityEl.classList.remove('show');
     subEl.classList.remove('show');
     await delay(600);
     splash.classList.add('out');
     await delay(1000);
-    splash.remove(); // remove from DOM so nothing inside can block touches
+    splash.remove();
   }
 
   function exitSplash() {
