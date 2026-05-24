@@ -2105,13 +2105,9 @@ boot();
       }, { once: true });
     });
 
-    // Phase 1 — typewriter left to right
-    // Pre-fetch both audio clips in parallel during typing so there is zero
-    // network latency at the moment we need to play them.
-    const spans = buildSpans();
-    fullEl.style.opacity = '1';
-    await delay(400);
-
+    // Start fetching IMMEDIATELY on gate tap — before any animation delay.
+    // This gives us the maximum possible time to load both clips.
+    // The typewriter takes ~2.5s, which is the prefetch budget.
     const audioPrefetch = hasVoice()
       ? Promise.all([
           fetchSplashAudio('Welcome to the Novel Enterprise Operator'),
@@ -2119,25 +2115,29 @@ boot();
         ])
       : Promise.resolve([null, null]);
 
+    // Phase 1 — typewriter runs in parallel with the fetch
+    const spans = buildSpans();
+    fullEl.style.opacity = '1';
+    await delay(400);
     await typeIn(spans);
 
-    // Hold the full title — dramatic pause before collapsing to NEO
-    await delay(2400);
+    // Short beat after typewriter — then audio takes over as the pacemaker.
+    // No fixed hold: the voice phrase itself holds the title on screen.
+    // Collapse fires the instant the phrase ends — perfect sync with "Neo."
+    await delay(500);
+    const [bufIntro, bufNeo] = await audioPrefetch; // usually already resolved
 
-    // Both clips should be decoded and ready well before this point
-    const [bufIntro, bufNeo] = await audioPrefetch;
-
-    // Phase 2 — Play "Welcome to the Novel Enterprise Operator."
-    // The instant this audio ends, trigger the collapse.
-    // "Neo." fires immediately after — perfectly synchronized.
+    // Play "Welcome to the Novel Enterprise Operator"
+    // Full title stays visible. Collapse fires the instant this ends.
     await playSplashBuffer(bufIntro);
 
-    collapseToNEO(spans);            // collapse starts the frame audio ends
-    await delay(80);                 // one beat so the visual registers
-    await playSplashBuffer(bufNeo);  // "Neo." plays as letters collapse inward
+    // Audio ended → collapse NOW, then say "Neo." as letters fall inward
+    collapseToNEO(spans);
+    await delay(80);
+    await playSplashBuffer(bufNeo);
 
-    // Hold NEO on screen after the word lands
-    await delay(1400);
+    // Hold NEO on screen
+    await delay(1800);
 
     // Phase 3 — TRINITY appears
     fullEl.style.opacity = '0';
@@ -2146,7 +2146,7 @@ boot();
     addMsg('trinity', welcomeRest);
     trinityEl.classList.add('show');
     subEl.classList.add('show');
-    await delay(1700);
+    await delay(2500); // give TRINITY room to breathe before exit
 
     // Exit splash
     trinityEl.classList.remove('show');
