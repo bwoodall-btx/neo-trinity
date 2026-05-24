@@ -1641,16 +1641,25 @@ async function speak(text) {
         voice_settings: { stability: 0.50, similarity_boost: 0.80, style: 0.30, use_speaker_boost: true },
       }),
     });
-    if (!res.ok) throw new Error('eleven');
-    const url = URL.createObjectURL(await res.blob());
+    if (!res.ok) {
+      const status = res.status;
+      if (status === 401) toast('ELEVENLABS AUTH FAILED — RE-ENTER API KEY');
+      else if (status === 422) toast('VOICE ENGINE ERROR — VOICE ID MAY BE INVALID');
+      else toast(`VOICE ENGINE ERROR — STATUS ${status}`);
+      throw new Error('eleven-' + status);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
     _audio = new Audio(url);
     _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); };
-    _audio.onerror = () => setState('idle');
-    await _audio.play();
+    _audio.onerror = () => { setState('idle'); URL.revokeObjectURL(url); };
+    const playPromise = _audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => { console.error('Audio play blocked:', e); setState('idle'); });
+    }
   } catch(e) {
     console.error('TTS', e);
     setState('idle');
-    toast('VOICE ENGINE ERROR — CHECK API KEY');
   }
 }
 
@@ -1677,35 +1686,51 @@ async function testVoice() {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let _rec = null;
 let _listenTimer = null;
+let _startTimer  = null;
 const LISTEN_TIMEOUT_MS = 10000; // auto-stop after 10s if no result (prevents background noise holding mic open)
 
 function startListening() {
   if (!hasVoice()) { openModal(); return; }
   if (state==='speaking'||state==='processing') return;
   if (!SR) { toast('SPEECH NOT AVAILABLE IN THIS BROWSER'); return; }
-  _rec = new SR();
-  _rec.lang='en-US'; _rec.interimResults=false; _rec.maxAlternatives=1; _rec.continuous=false;
-  _rec.onstart  = () => {
-    setState('listening');
-    _listenTimer = setTimeout(() => stopListening(), LISTEN_TIMEOUT_MS);
-  };
-  _rec.onerror  = e => {
-    clearTimeout(_listenTimer);
-    setState('idle');
-    if(e.error==='not-allowed') toast('MICROPHONE PERMISSION REQUIRED');
-  };
-  _rec.onend    = () => { clearTimeout(_listenTimer); if(state==='listening') setState('idle'); };
-  _rec.onresult = async e => {
-    clearTimeout(_listenTimer);
-    const tx = e.results[0][0].transcript;
-    addMsg('user', tx);
-    setState('processing');
-    await processRequest('general', tx);
-  };
-  _rec.start();
+
+  // Show LISTENING immediately so the tap feels responsive
+  setState('listening');
+
+  // iOS Safari requires ~300ms between recognition sessions to release
+  // audio hardware. Without this delay, onstart fires but no audio is
+  // captured — the mic appears open but nothing registers.
+  _startTimer = setTimeout(() => {
+    if (state !== 'listening') return; // user cancelled during delay
+    _rec = new SR();
+    _rec.lang='en-US'; _rec.interimResults=false; _rec.maxAlternatives=1; _rec.continuous=false;
+    _rec.onstart  = () => {
+      _listenTimer = setTimeout(() => stopListening(), LISTEN_TIMEOUT_MS);
+    };
+    _rec.onerror  = e => {
+      clearTimeout(_listenTimer);
+      setState('idle');
+      if(e.error==='not-allowed') toast('MICROPHONE PERMISSION REQUIRED');
+      else if(e.error==='audio-capture') toast('MICROPHONE UNAVAILABLE — TRY AGAIN');
+    };
+    _rec.onend    = () => { clearTimeout(_listenTimer); if(state==='listening') setState('idle'); };
+    _rec.onresult = async e => {
+      clearTimeout(_listenTimer);
+      const tx = e.results[0][0].transcript;
+      addMsg('user', tx);
+      setState('processing');
+      await processRequest('general', tx);
+    };
+    try { _rec.start(); } catch(err) { console.error('SR start:', err); setState('idle'); }
+  }, 300);
 }
 
-function stopListening() { clearTimeout(_listenTimer); if(_rec){_rec.stop();_rec=null;} }
+function stopListening() {
+  clearTimeout(_listenTimer);
+  clearTimeout(_startTimer);
+  if(_rec){ try { _rec.stop(); } catch(e) {} _rec=null; }
+  setState('idle');
+}
 
 /* ─────────────────────────────────────────
    ORB
