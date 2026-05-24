@@ -1450,6 +1450,9 @@ Planned but not yet built: Marketing Manager, Business Development, Facilities, 
 AGENT NAMING NOTE
 Agents use character names from The Matrix. Trinity = Executive Assistant (you). Morpheus = Chief Agent (CA) — internal architecture still references "CA" but the operational name is Morpheus. Additional agent names will follow this convention as they are built.
 
+PRONUNCIATION NOTE — CRITICAL
+"NEO" is always spoken as a name — "Neo" — never spelled out as individual letters. This applies in all speech, all responses, and all references to the system, the project, or the agent network. Write it as "NEO" in text but it will always be heard as "Neo."
+
 MASTER ORGANIZATIONAL DIRECTORY (MOD)
 Centralized file repository for all NEO agents. Google Drive: My Drive/Claude Projects/NEO/MOD/
 ${_modIndex ? '\n' + _modIndex : 'MOD index not loaded — file may not be publicly shared in Google Drive yet.'}
@@ -1824,6 +1827,9 @@ function numberToWords(n) {
 ───────────────────────────────────────── */
 function sanitizeForTTS(text) {
   return text
+    // NEO is always a name ("Neo"), never spelled as letters N-E-O
+    .replace(/\bNEO\b/g, 'Neo')
+
     // strip markdown bold/italic
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
@@ -2073,14 +2079,17 @@ boot();
     await delay(400);
     await typeIn(spans);
 
-    // Hold the full title
-    await delay(1100);
+    // Hold the full title — dramatic pause before collapsing to NEO
+    await delay(2400);
 
     // Phase 2 — collapse non-N/E/O letters leftward
     await collapseToNEO(spans);
 
-    // Hold N  E  O for 2 seconds
-    await delay(2000);
+    // Let the collapse animation settle, then hold NEO
+    await delay(600);
+
+    // Hold N  E  O
+    await delay(2200);
 
     // Phase 3 — TRINITY appears directly (large NEO removed)
     fullEl.style.opacity = '0';
