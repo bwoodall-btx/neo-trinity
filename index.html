@@ -1708,8 +1708,27 @@ function orbTap() {
 }
 
 /* ─────────────────────────────────────────
+   NUMBER TO WORDS — helper for sanitizeForTTS
+───────────────────────────────────────── */
+function numberToWords(n) {
+  if (n === 0) return 'zero';
+  if (n < 0)   return 'negative ' + numberToWords(-n);
+  const ones = ['','one','two','three','four','five','six','seven','eight','nine',
+                 'ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen',
+                 'seventeen','eighteen','nineteen'];
+  const tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  if (n < 20)   return ones[n];
+  if (n < 100)  return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+  if (n < 1000) return ones[Math.floor(n/100)] + ' hundred' + (n%100 ? ' ' + numberToWords(n%100) : '');
+  if (n < 1e6)  return numberToWords(Math.floor(n/1000)) + ' thousand' + (n%1000 ? ' ' + numberToWords(n%1000) : '');
+  if (n < 1e9)  return numberToWords(Math.floor(n/1e6))  + ' million'  + (n%1e6  ? ' ' + numberToWords(n%1e6)  : '');
+  return n.toString();
+}
+
+/* ─────────────────────────────────────────
    SANITIZE FOR TTS
-   Strip markdown and expand abbreviations
+   Strip markdown, expand abbreviations,
+   and normalize numbers/times/phones
    before sending text to ElevenLabs.
 ───────────────────────────────────────── */
 function sanitizeForTTS(text) {
@@ -1724,6 +1743,26 @@ function sanitizeForTTS(text) {
     // strip bullet/list markers
     .replace(/^\s*[-*•]\s+/gm, '')
     .replace(/^\s*\d+\.\s+/gm, '')
+
+    // ── Phone numbers — read digit-by-digit ──────────────────────────
+    // Matches: 555-123-4567 | (555) 123-4567 | 555.123.4567
+    .replace(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, m =>
+      m.replace(/\D/g, '').split('').join(' '))
+
+    // ── Times with AM/PM — fix colon before general number conversion ─
+    // "4:00 PM" → "4 PM"  |  "4:30 PM" → "4 30 PM"
+    .replace(/\b(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)\b/g, (_, h, m, p) =>
+      m === '00' ? `${h} ${p.toUpperCase()}` : `${h} ${parseInt(m,10)} ${p.toUpperCase()}`)
+    // ── Bare colons in times (no AM/PM) ─────────────────────────────
+    // "14:00" → "14"  |  "14:30" → "14 30"
+    .replace(/\b(\d{1,2}):(\d{2})\b/g, (_, h, m) =>
+      m === '00' ? h : `${h} ${parseInt(m,10)}`)
+
+    // ── Cardinal numbers ≥ 10 (not ordinals, not part of larger strings)
+    // "423" → "four hundred twenty three"  |  "2026" → "two thousand twenty six"
+    // Ordinals (1st, 2nd, 3rd, 4th…) are left alone for ElevenLabs to handle.
+    .replace(/\b(\d{2,})\b(?!\s*(?:st|nd|rd|th))/g, m => numberToWords(parseInt(m, 10)))
+
     // day abbreviations (word boundary)
     .replace(/\bMon\b/g, 'Monday')
     .replace(/\bTue\b/g, 'Tuesday')
