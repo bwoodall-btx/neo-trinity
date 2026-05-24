@@ -1387,7 +1387,7 @@ async function loadContextFiles() {
   try {
     const [ctxRes, calRes] = await Promise.all([
       fetch(c.ak + '/context'),
-      fetch(c.ak + '/memory'),
+      fetch(c.ak + '/calendar'),   // GET /calendar — returns today's events from Apps Script
     ]);
     if (ctxRes.ok) {
       const data = await ctxRes.json();
@@ -1397,6 +1397,9 @@ async function loadContextFiles() {
     if (calRes.ok) {
       const calData = await calRes.json();
       _calendar = formatCalendar(calData);
+      console.log('[Trinity] Calendar loaded at startup:', _calendar ? 'OK' : 'empty');
+    } else {
+      console.warn('[Trinity] Calendar startup load failed:', calRes.status);
     }
   } catch (e) {
     console.warn('loadContextFiles failed:', e);
@@ -1452,11 +1455,11 @@ CURRENT DATE & TIME (Central Time)
 ${now}
 
 TODAY'S CALENDAR (Central Time)
-${_calendar || 'No calendar data loaded — calendar integration may still be initializing.'}
+${_calendar || 'Calendar cache not loaded — use read_calendar tool to fetch current events.'}
 
 CALENDAR TOOLS — LIVE READ/WRITE
 You have four calendar tools available: read_calendar, create_event, update_event, delete_event.
-- read_calendar: Use when Ben asks about dates beyond the 7-day window above, or requests a specific date range. Always use this before update_event or delete_event so you have the correct event_id.
+- read_calendar: Use ANY time Ben asks about his schedule, calendar, or appointments — even if the cache above shows data, calling this ensures real-time accuracy. Always call this before update_event or delete_event so you have the correct event_id.
 - create_event: Creates on bwoodall@pescaholding.com. Always confirm title, date, start time, and end time with Ben before calling. Use ISO 8601 with CT offset (e.g. 2026-05-23T14:00:00-05:00). CDT offset is -05:00, CST is -06:00.
 - update_event: Requires event_id. Confirm changes before executing. If you don't have the event_id, call read_calendar first.
 - delete_event: Requires event_id. Always confirm with Ben — this is permanent.
