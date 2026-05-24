@@ -934,7 +934,7 @@
 
   <div id="orb-zone">
     <div id="orb-wrap">
-      <button id="orb" aria-label="Tap to speak" onclick="orbTap()">
+      <button id="orb" aria-label="Tap to speak">
         <span id="orb-icon">◉</span>
       </button>
       <div id="wave">
@@ -1894,19 +1894,16 @@ async function boot() {
 boot();
 
 /* ─────────────────────────────────────────
-   ORB — pointerdown is most reliable across iOS Safari PWA + desktop
+   ORB — pointerdown fires exactly once on iOS touch and desktop mouse.
+   No onclick attribute on the button — that caused a second orbTap()
+   call ~300ms after touchstart, immediately canceling the listen state.
 ───────────────────────────────────────── */
 (function () {
-  // Deduplicate: touchstart fires before click on mobile; track last fire time
-  let lastFire = 0;
-  window._orbFire = function() {
-    const now = Date.now();
-    if (now - lastFire < 600) return;
-    lastFire = now;
-    orbTap();
-  };
   const orb = document.getElementById('orb');
-  orb.addEventListener('touchstart', window._orbFire, { passive: true });
+  orb.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
+    orbTap();
+  });
 })();
 
 /* ─────────────────────────────────────────
