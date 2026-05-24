@@ -1683,7 +1683,20 @@ async function speak(text) {
     }
     const arrayBuffer = await res.arrayBuffer();
     const ctx = getAudioCtx();
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    // iOS suspends AudioContext during Speech Recognition mic session.
+    // Must resume before decoding or playback will silently fail.
+    if (ctx.state !== 'running') await ctx.resume();
+
+    // Callback-based decodeAudioData — wider iOS Safari compatibility
+    // than the Promise-only form which can silently no-op on older iOS.
+    const audioBuffer = await new Promise((resolve, reject) => {
+      ctx.decodeAudioData(arrayBuffer, resolve, err => {
+        console.error('decodeAudioData failed:', err);
+        reject(err);
+      });
+    });
+
     stopAudio();
     _audioSource = ctx.createBufferSource();
     _audioSource.buffer = audioBuffer;
@@ -1693,6 +1706,9 @@ async function speak(text) {
   } catch(e) {
     console.error('TTS', e);
     setState('idle');
+    if (!String(e?.message).startsWith('eleven-')) {
+      toast('AUDIO DECODE ERROR — ' + (e?.message || 'unknown'));
+    }
   }
 }
 
