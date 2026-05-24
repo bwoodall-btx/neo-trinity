@@ -1623,9 +1623,42 @@ async function callBackend(action, input, _retries = 3) {
 }
 
 /* ─────────────────────────────────────────
-   ELEVENLABS TTS
+   AUDIO ENGINE (Web Audio API)
+   Uses AudioContext instead of HTMLAudioElement. On iOS Safari PWA,
+   new Audio().play() is blocked when called outside a direct user gesture
+   (i.e. after any async API call). AudioContext, once unlocked during a
+   tap, stays active across async chains — iOS cannot block it.
 ───────────────────────────────────────── */
-let _audio = null;
+let _audioCtx    = null;
+let _audioSource = null;
+
+function getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  // iOS suspends AudioContext when the app backgrounds; resume on every gesture
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function unlockAudio() {
+  // Must be called directly from a user gesture (tap) to unlock the context.
+  // Plays a 1-frame silent buffer — sufficient to satisfy iOS autoplay policy.
+  const ctx = getAudioCtx();
+  if (ctx.state === 'running') return;
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
+function stopAudio() {
+  if (_audioSource) {
+    try { _audioSource.stop(); } catch(e) {}
+    _audioSource = null;
+  }
+}
 
 async function speak(text) {
   const c = cfg();
@@ -1644,19 +1677,19 @@ async function speak(text) {
     if (!res.ok) {
       const status = res.status;
       if (status === 401) toast('ELEVENLABS AUTH FAILED — RE-ENTER API KEY');
-      else if (status === 422) toast('VOICE ENGINE ERROR — VOICE ID MAY BE INVALID');
+      else if (status === 422) toast('VOICE ENGINE ERROR — CHECK VOICE ID');
       else toast(`VOICE ENGINE ERROR — STATUS ${status}`);
       throw new Error('eleven-' + status);
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    _audio = new Audio(url);
-    _audio.onended = () => { setState('idle'); URL.revokeObjectURL(url); };
-    _audio.onerror = () => { setState('idle'); URL.revokeObjectURL(url); };
-    const playPromise = _audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(e => { console.error('Audio play blocked:', e); setState('idle'); });
-    }
+    const arrayBuffer = await res.arrayBuffer();
+    const ctx = getAudioCtx();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    stopAudio();
+    _audioSource = ctx.createBufferSource();
+    _audioSource.buffer = audioBuffer;
+    _audioSource.connect(ctx.destination);
+    _audioSource.onended = () => { _audioSource = null; setState('idle'); };
+    _audioSource.start(0);
   } catch(e) {
     console.error('TTS', e);
     setState('idle');
@@ -1736,10 +1769,11 @@ function stopListening() {
    ORB
 ───────────────────────────────────────── */
 function orbTap() {
-  if (!hasVoice())          { openModal(); return; }
-  if (state==='idle')       startListening();
+  unlockAudio(); // called on every tap — keeps AudioContext alive across sessions on iOS
+  if (!hasVoice())              { openModal(); return; }
+  if (state==='idle')           startListening();
   else if (state==='listening') stopListening();
-  else if (state==='speaking'&&_audio) { _audio.pause(); _audio=null; setState('idle'); }
+  else if (state==='speaking')  { stopAudio(); setState('idle'); }
 }
 
 /* ─────────────────────────────────────────
