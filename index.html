@@ -1464,7 +1464,7 @@ When Ben says "schedule", "add to my calendar", "move that meeting", "cancel", o
 
 CALENDAR DATE VALIDATION — MANDATORY:
 Before calling create_event or update_event, you must validate and confirm the date using this exact process:
-1. Calculate the exact calendar date from the current date shown above. Example: if today is Saturday May 23 and Ben says "next Monday", count forward to get Monday May 26. Never guess — derive it from the current date.
+1. Calculate the exact calendar date from the current date shown above. Example: if today is Saturday May 23 and Ben says "next Monday", count forward: Sunday May 24, Monday May 25 — so next Monday is May 25. Never guess — always count day by day from the current date.
 2. Verify the day name and numeric date are consistent. If "next Monday" resolves to the 26th, confirm it as "Monday, May 26" — not just "Monday" or just "the 26th."
 3. Always state your confirmation in the format: "[Day], [Month] [Date] at [Time]" (e.g., "Monday, May 26 at 3:00 PM"). This makes any mismatch immediately visible to Ben before the event is created.
 4. Only call the tool AFTER Ben verbally confirms the full day-date-time combination.
